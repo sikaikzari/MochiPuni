@@ -1,1 +1,1 @@
-https://sikaikzari.github.io/MochiPuni/?v=2
+https://sikaikzari.github.io/MochiPuni/
