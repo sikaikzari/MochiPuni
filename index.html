@@ -94,16 +94,27 @@
     <h1>Mochi-Puni</h1>
     <p>もちぷにでゴールを目指すゆ！<br><br>
     🪙 コインを集めるゆ<br>
-    👟 触手→敵を吹っ飛ばす<br>
+    🫱 触手→敵を吹っ飛ばす<br>
     💀 2面の敵は上から乗るとアウト<br>
     ⬆️ 2段ジャンプOK</p>
     <button id="startBtn">▶ START!</button>
   </div>
 </div>
 
-<script src="bgm.js"></script>
-<script src="stage.js"></script>
-<script src="draw.js"></script>
-<script src="game.js"></script>
+<script>
+async function loadScripts(){
+  const files = ['bgm.js','stage.js','draw.js','game.js'];
+  const v = Date.now();
+  for(const f of files){
+    await new Promise(r=>{
+      const s=document.createElement('script');
+      s.src=f+'?'+v; s.onload=r;
+      document.head.appendChild(s);
+    });
+  }
+}
+loadScripts();
+</script>
+
 </body>
 </html>
