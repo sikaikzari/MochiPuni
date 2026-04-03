@@ -96,7 +96,7 @@ function genStage2() {
     }
   });
 
-plats.push({ x: 1450, y: GND(), w: 20, h: 60, t: 'checkpoint' });
+plats.push({ x: 1430, y: GND() - 110, w: 20, h: 60, t: 'checkpoint' });
 }
 
 function genStage3() {
