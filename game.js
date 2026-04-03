@@ -64,6 +64,19 @@ function coinFx(x, y) { for (let i = 0; i < 6; i++) parts.push({ x, y, vx: (Math
 function dieFx(x, y, col = '#ff4455') { for (let i = 0; i < 10; i++) parts.push({ x, y, vx: (Math.random() - .5) * 7, vy: -(Math.random() * 5 + 2), life: 28, ml: 28, col, r: 4 }); }
 function kickFx(x, y) { for (let i = 0; i < 8; i++) parts.push({ x, y, vx: (Math.random() - .5) * 8, vy: -(Math.random() * 3 + 1), life: 20, ml: 20, col: '#ff9900', r: 3 }); }
 
+// ===== 安全なリスポーン位置を探す =====
+function safeRespawnX() {
+  // チェックポイントが有効ならそこから
+  if (checkpoint && checkpoint.active) return checkpoint.x;
+  // なければカメラ位置か80の大きい方、かつ地面がある場所を探す
+  const baseX = Math.max(camX + 40, 80);
+  for (let tx = baseX; tx < baseX + 400; tx += 20) {
+    const onGround = plats.some(p => p.t === 'g' && tx >= p.x && tx <= p.x + p.w);
+    if (onGround) return tx;
+  }
+  return 80;
+}
+
 // ===== UI =====
 function hit(ax, ay, aw, ah, bx, by, bw, bh) { return ax < bx + bw && ax + aw > bx && ay < by + bh && ay + ah > by; }
 function ui() { document.getElementById('sc').textContent = score; document.getElementById('co').textContent = coins; document.getElementById('li').textContent = lives; }
@@ -77,7 +90,10 @@ function showOv(title, desc, btn) {
 function loseLife() {
   sfxDamage(); lives--; ui();
   if (lives <= 0) { gState = 'over'; showOv('GAME OVER', `SCORE: ${score}<br>COIN: ${coins}<br><br>またがんばるゆ！`, '▶ TRY AGAIN'); }
-  else { pl.x = Math.max(camX + 60, 80); pl.y = GND() - PH - 10; pl.vx = 0; pl.vy = 0; pl.inv = 120; }
+  else {
+    const rx = safeRespawnX();
+    pl.x = rx; pl.y = GND() - PH - 10; pl.vx = 0; pl.vy = 0; pl.inv = 120;
+  }
 }
 
 function nextStage() {
@@ -126,12 +142,20 @@ function update() {
 
   for (const p of plats) {
     if (!hit(pl.x, pl.y, pl.w, pl.h, p.x, p.y, p.w, p.h)) continue;
+
+    // チェックポイント
+    if (p.t === 'checkpoint') {
+      if (!checkpoint.active) { checkpoint.active = true; checkpoint.x = p.x; }
+      continue;
+    }
+
     if (p.t === 'goal') {
       const tx = p.x + p.w / 2 - 6;
       if (hit(pl.x, pl.y, pl.w, pl.h, tx, p.y, 12, p.h)) {
-        if (stage === 1) {
+        if (stage < 3) {
           gState = 'transit';
-          showOv('STAGE 1 CLEAR! 🎉', `SCORE: ${score}<br>COIN: ${coins}<br><br>ステージ2へ行くゆ〜！🥹`, '▶ NEXT STAGE!');
+          const msgs = ['', 'ステージ2へ行くゆ〜！🥹', 'ステージ3へ行くゆ〜！🥹'];
+          showOv(`STAGE ${stage} CLEAR! 🎉`, `SCORE: ${score}<br>COIN: ${coins}<br><br>${msgs[stage]}`, '▶ NEXT STAGE!');
           const btn = document.getElementById('overlay').querySelector('button');
           btn.removeEventListener('click', startGame);
           btn.addEventListener('click', () => { document.getElementById('overlay').classList.add('hidden'); nextStage(); }, { once: true });
@@ -164,6 +188,22 @@ function update() {
 
   for (const e of enms) {
     if (!e.alive) continue;
+
+    // 羽ウニの上下移動
+    if (e.type === 'uni') {
+      e.y = (e.baseY || (e.baseY = e.y)) + Math.sin((e.floatPh || 0) + frame * 0.025) * (e.floatRange || 50);
+    }
+
+    // ステップ敵のふわふわ
+    if (e.type === 'step') {
+      e.y = (e.baseY || (e.baseY = e.y)) + Math.sin((e.floatPh || 0) + frame * 0.03) * 4;
+    }
+
+    // ゴーストのふわふわ
+    if (e.type === 'ghost') {
+      e.y = (e.baseY || (e.baseY = e.y)) + Math.sin((e.floatPh || 0) + frame * 0.04) * 5;
+    }
+
     if (e.knockvx !== 0 || e.knockvy !== 0) {
       e.x += e.knockvx; e.y += e.knockvy; e.knockvy += 0.7;
       for (const e2 of enms) {
@@ -171,28 +211,62 @@ function update() {
         if (hit(e.x, e.y, e.w, e.h, e2.x, e2.y, e2.w, e2.h)) { e2.alive = false; score += 80; dieFx(e2.x + 15, e2.y + 14, '#aa44ff'); sfxChain(); ui(); }
       }
       if (e.y > WORLD_H + 60 || e.x < -200 || e.x > WLEN + 200) e.alive = false;
-      else if (e.y + e.h > GND()) { e.alive = false; dieFx(e.x + 15, GND() - 10); }
       continue;
     }
-    if (!e.flying) e.vy += 0.6;
-    e.x += e.vx; e.y += e.vy;
-    for (const p of plats) {
-      if (p.t === 'goal') continue;
-      if (!hit(e.x, e.y, e.w, e.h, p.x, p.y, p.w, p.h)) continue;
-      const ox = Math.min(e.x + e.w, p.x + p.w) - Math.max(e.x, p.x);
-      const oy = Math.min(e.y + e.h, p.y + p.h) - Math.max(e.y, p.y);
-      if (ox < oy) e.vx *= -1;
-      else { e.y = p.y - e.h; e.vy = 0; }
-    }
-    if (e.flying && e.y + e.h > GND()) { e.y = GND() - e.h; e.vy = 0; }
-    if (pl.inv <= 0 && hit(pl.x, pl.y, pl.w, pl.h, e.x, e.y, e.w, e.h)) {
-      if (e.spiky) { loseLife(); return; }
-      else {
-        if (pl.vy > 0 && pl.y + pl.h < e.y + e.h * 0.52) { e.alive = false; pl.vy = -12; score += 50; dieFx(e.x + 15, e.y + 14); sfxStomp(); ui(); }
-        else { loseLife(); return; }
+
+    // flying以外は重力・床判定
+    if (!e.flying) {
+      e.vy += 0.6;
+      e.x += e.vx; e.y += e.vy;
+      let onPlat = false;
+      for (const p of plats) {
+        if (p.t === 'goal' || p.t === 'checkpoint') continue;
+        if (!hit(e.x, e.y, e.w, e.h, p.x, p.y, p.w, p.h)) continue;
+        const ox = Math.min(e.x + e.w, p.x + p.w) - Math.max(e.x, p.x);
+        const oy = Math.min(e.y + e.h, p.y + p.h) - Math.max(e.y, p.y);
+        if (ox < oy) e.vx *= -1;
+        else { e.y = p.y - e.h; e.vy = 0; onPlat = true; }
+      }
+      // 地面の端で折り返す（穴に落ちないように）
+      if (onPlat) {
+        const ahead = e.x + (e.vx > 0 ? e.w + 2 : -2);
+        const edgeCheck = plats.some(p => p.t === 'g' && ahead >= p.x && ahead <= p.x + p.w);
+        if (!edgeCheck) e.vx *= -1;
+      }
+      if (e.y > WORLD_H + 60) e.alive = false;
+    } else {
+      // flyingは水平移動のみ
+      if (e.type !== 'uni' && e.type !== 'step' && e.type !== 'ghost') {
+        e.x += e.vx; e.y += e.vy;
+      } else {
+        e.x += e.vx;
       }
     }
-    if (pl.kick > 0) {
+
+    if (pl.inv <= 0 && hit(pl.x, pl.y, pl.w, pl.h, e.x, e.y, e.w, e.h)) {
+      // ステップ敵：上から踏んだら倒せる（一回限り足場）
+      if (e.type === 'step') {
+        if (pl.vy > 0 && pl.y + pl.h < e.y + e.h * 0.6) {
+          e.alive = false; pl.vy = -12; score += 50; dieFx(e.x + 15, e.y + 10, '#44aaff'); sfxStomp(); ui();
+        } else { loseLife(); return; }
+      }
+      // ゴーストと羽ウニ：触れたら即死
+      else if (e.type === 'ghost' || e.type === 'uni') {
+        loseLife(); return;
+      }
+      // スパイク：触れたら即死
+      else if (e.spiky) {
+        loseLife(); return;
+      }
+      // よちよち：上から踏めば倒せる
+      else {
+        if (pl.vy > 0 && pl.y + pl.h < e.y + e.h * 0.52) {
+          e.alive = false; pl.vy = -12; score += 50; dieFx(e.x + 13, e.y + 13); sfxStomp(); ui();
+        } else { loseLife(); return; }
+      }
+    }
+
+    if (pl.kick > 0 && e.type !== 'ghost') {
       const kx = pl.face > 0 ? pl.x + pl.w - 4 : pl.x - 12;
       if (hit(kx, pl.y + pl.h * 0.25, 16, pl.h * 0.55, e.x, e.y, e.w, e.h)) {
         e.knockvx = pl.face * 13; e.knockvy = -7; e.vx = 0; e.vy = 0;
