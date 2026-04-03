@@ -143,16 +143,18 @@ function drawEnm(e) {
 
   // ===== ステップ敵（踏んで渡る足場） =====
   else if (e.type === 'step') {
+    ctx.save();
+    ctx.globalAlpha = 0.7;
     ctx.translate(sx + e.w / 2, sy + e.h / 2);
     const floatY = Math.sin((e.floatPh || 0) + frame * 0.03) * 4;
     ctx.translate(0, floatY);
     // 丸っこい雲みたいな体
-    const sg = ctx.createRadialGradient(0, -2, 2, 0, 0, 20);
+    const sg = ctx.createRadialGradient(0, -2, 2, 0, 0, 16);
     sg.addColorStop(0, '#aaddff'); sg.addColorStop(1, '#4488cc');
     ctx.fillStyle = sg;
-    ctx.beginPath(); ctx.ellipse(0, 0, 22, 12, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(0, 0, 18, 9, 0, 0, Math.PI * 2); ctx.fill();
     ctx.strokeStyle = '#2266aa'; ctx.lineWidth = 1.5;
-    ctx.beginPath(); ctx.ellipse(0, 0, 22, 12, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.ellipse(0, 0, 18, 9, 0, 0, Math.PI * 2); ctx.stroke();
     // 顔
     ctx.fillStyle = '#333';
     ctx.beginPath(); ctx.arc(-6, -2, 2, 0, Math.PI * 2); ctx.fill();
@@ -160,13 +162,14 @@ function drawEnm(e) {
     // にっこり
     ctx.strokeStyle = '#333'; ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.arc(0, 0, 5, 0.2, Math.PI - 0.2); ctx.stroke();
+    ctx.restore();
   }
 
   // ===== 羽ウニ =====
   else if (e.type === 'uni') {
     ctx.translate(sx + e.w / 2, sy + e.h / 2);
     const floatY = Math.sin((e.floatPh || 0) + frame * 0.025) * (e.floatRange || 50);
-    ctx.translate(0, floatY * 0.01); // 実際の移動はgame.jsで
+    ctx.translate(0, floatY * 0.01); 
     // 羽
     const wingFlap = Math.sin(frame * 0.2) * 0.3;
     ctx.save(); ctx.rotate(-0.3 + wingFlap);
@@ -179,11 +182,11 @@ function drawEnm(e) {
     ctx.restore();
     // 体
     const ub = ctx.createRadialGradient(0, 0, 2, 0, 0, 14);
-    ub.addColorStop(0, '#ffaacc'); ub.addColorStop(1, '#cc2266');
+    ub.addColorStop(0, '#333333'); ub.addColorStop(1, '#000000');
     ctx.fillStyle = ub;
     ctx.beginPath(); ctx.arc(0, 0, 13, 0, Math.PI * 2); ctx.fill();
     // トゲ
-    ctx.fillStyle = '#aa1144';
+    ctx.fillStyle = '#000000';
     for (let a = 0; a < Math.PI * 2; a += Math.PI / 5) {
       const tx = Math.cos(a) * 13, ty = Math.sin(a) * 13;
       ctx.beginPath(); ctx.moveTo(tx, ty);
@@ -199,6 +202,7 @@ function drawEnm(e) {
     ctx.beginPath(); ctx.arc(-3.5, -2, 1.5, 0, Math.PI * 2); ctx.fill();
     ctx.beginPath(); ctx.arc(4.5, -2, 1.5, 0, Math.PI * 2); ctx.fill();
   }
+
 
   // ===== 2面スパイク敵 =====
   else if (e.type === 'spike') {
