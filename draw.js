@@ -190,9 +190,9 @@ function drawEnm(e) {
     ctx.fillStyle = '#aabbff';
     ctx.beginPath(); ctx.arc(-5.5, -6, 1, 0, Math.PI * 2); ctx.fill();
     ctx.beginPath(); ctx.arc(3.5, -6, 1, 0, Math.PI * 2); ctx.fill();
-    // ちょいニヤリ口
+    // 均等ににっこり口
     ctx.strokeStyle = '#334466'; ctx.lineWidth = 1.5; ctx.lineCap = 'round';
-    ctx.beginPath(); ctx.arc(1, 0, 4, -0.2, Math.PI * 0.75); ctx.stroke();
+    ctx.beginPath(); ctx.arc(0, -1, 4, 0.3, Math.PI - 0.3); ctx.stroke();
   }
 
   // ===== ステップ敵（踏んで渡る足場） =====

@@ -11,13 +11,13 @@ function playTone(freq,type,dur,vol,startFreq){
     osc.start(ac.currentTime); osc.stop(ac.currentTime+dur);
   }catch(e){}
 }
-function sfxJump(){ playTone(600,'square',0.12,0.18,280); setTimeout(()=>playTone(900,'square',0.08,0.1),60); }
-function sfxCoin(){ playTone(1200,'sine',0.08,0.15); setTimeout(()=>playTone(1600,'sine',0.1,0.12),50); setTimeout(()=>playTone(2000,'sine',0.12,0.1),110); }
-function sfxStomp(){ playTone(220,'sine',0.1,0.2,440); }
-function sfxDamage(){ playTone(150,'sawtooth',0.25,0.3,400); setTimeout(()=>playTone(100,'sawtooth',0.2,0.2,200),80); }
-function sfxKick(){ playTone(300,'sawtooth',0.08,0.22,520); setTimeout(()=>playTone(160,'square',0.12,0.18),65); }
-function sfxChain(){ playTone(800,'sine',0.06,0.2); setTimeout(()=>playTone(1100,'sine',0.06,0.15),50); setTimeout(()=>playTone(1400,'sine',0.08,0.12),100); }
-function sfxStart(){ [600,800,1000,1300,1700,2200].forEach((f,i)=>{ setTimeout(()=>playTone(f,'sine',0.4,0.13),i*70); }); }
+function sfxJump(){ if(!seOn) return; playTone(600,'square',0.12,0.18,280); setTimeout(()=>playTone(900,'square',0.08,0.1),60); }
+function sfxCoin(){ if(!seOn) return; playTone(1200,'sine',0.08,0.15); setTimeout(()=>playTone(1600,'sine',0.1,0.12),50); setTimeout(()=>playTone(2000,'sine',0.12,0.1),110); }
+function sfxStomp(){ if(!seOn) return; playTone(220,'sine',0.1,0.2,440); }
+function sfxDamage(){ if(!seOn) return; playTone(150,'sawtooth',0.25,0.3,400); setTimeout(()=>playTone(100,'sawtooth',0.2,0.2,200),80); }
+function sfxKick(){ if(!seOn) return; playTone(300,'sawtooth',0.08,0.22,520); setTimeout(()=>playTone(160,'square',0.12,0.18),65); }
+function sfxChain(){ if(!seOn) return; playTone(800,'sine',0.06,0.2); setTimeout(()=>playTone(1100,'sine',0.06,0.15),50); setTimeout(()=>playTone(1400,'sine',0.08,0.12),100); }
+function sfxStart(){ if(!seOn) return; [600,800,1000,1300,1700,2200].forEach((f,i)=>{ setTimeout(()=>playTone(f,'sine',0.4,0.13),i*70); }); }
 function resumeAudio(){ if(audioCtx) audioCtx.resume(); stopBGM(); setTimeout(()=>startBGM(),100); }
 
 const BGM_NOTES=[[523,.25],[659,.25],[784,.25],[880,.25],[784,.25],[659,.25],[523,.25],[523,.5],[587,.25],[698,.25],[784,.25],[880,.5],[784,.25],[698,.25],[587,.25],[523,.5],[659,.25],[784,.25],[988,.25],[1047,.25],[988,.25],[784,.25],[659,.25],[659,.5],[523,.25],[659,.25],[784,.25],[1047,.5],[784,.5],[659,.25],[523,1.0]];

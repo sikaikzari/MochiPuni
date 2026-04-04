@@ -11,8 +11,8 @@
   #wrapper { display:flex;flex-direction:column;width:100%;height:100%; }
   #hud {
     display:flex;justify-content:space-between;align-items:center;
-    width:100%;padding:4px 14px;flex-shrink:0;
-    font-family:'Press Start 2P',monospace;font-size:10px;
+    width:100%;padding:6px 14px;flex-shrink:0;
+    font-family:'Press Start 2P',monospace;font-size:clamp(11px,2.5vw,18px);
     background:rgba(0,0,0,0.5);
   }
   #hud .s{color:#ffe066;} #hud .c{color:#ffd700;} #hud .l{color:#ff6b9d;}
@@ -61,7 +61,39 @@
   }
   #obox button:active{transform:translateY(3px);box-shadow:0 2px 0 #3d1f99;}
   .hidden{display:none!important;}
-  #stage-banner {
+  #menu-btn {
+    position:fixed;top:44px;right:10px;z-index:300;
+    width:36px;height:36px;border-radius:50%;
+    background:rgba(92,53,204,0.5);border:2px solid rgba(92,53,204,0.8);
+    color:white;font-size:18px;display:flex;align-items:center;justify-content:center;
+    cursor:pointer;box-shadow:0 2px 10px rgba(92,53,204,0.5);
+  }
+  #menu-panel {
+    position:fixed;top:86px;right:10px;z-index:300;
+    background:#0d0d2e;border:2px solid #5c35cc;border-radius:12px;
+    padding:10px 14px;display:flex;flex-direction:column;gap:10px;
+    box-shadow:0 4px 24px rgba(92,53,204,0.5);
+    font-family:'Press Start 2P',monospace;font-size:8px;color:white;
+    transition:opacity 0.15s,transform 0.15s;
+  }
+  #menu-panel.hidden{opacity:0;pointer-events:none;transform:translateY(-8px);}
+  .menu-row{display:flex;align-items:center;justify-content:space-between;gap:12px;white-space:nowrap;}
+  .toggle {
+    width:38px;height:20px;border-radius:10px;background:#333;position:relative;
+    cursor:pointer;border:1px solid #555;flex-shrink:0;transition:background 0.2s;
+  }
+  .toggle.on{background:#5c35cc;}
+  .toggle::after{
+    content:'';position:absolute;top:2px;left:2px;width:14px;height:14px;
+    border-radius:50%;background:white;transition:left 0.2s;
+  }
+  .toggle.on::after{left:20px;}
+  .menu-reload{
+    width:100%;padding:6px 0;background:#3d1f99;border:none;border-radius:6px;
+    color:white;font-family:'Press Start 2P',monospace;font-size:7px;cursor:pointer;
+    box-shadow:0 3px 0 #2a1166;
+  }
+  .menu-reload:active{transform:translateY(2px);box-shadow:0 1px 0 #2a1166;}
     position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
     font-family:'Press Start 2P',monospace;font-size:24px;
     color:#ffe066;text-shadow:0 0 30px #ffe066,0 0 60px #ffe066;
@@ -75,7 +107,6 @@
     <span class="s">⭐<span id="sc">0</span></span>
     <span class="c">🪙<span id="co">0</span></span>
     <span class="l">❤️<span id="li">3</span></span>
-<span style="cursor:pointer;font-family:'Press Start 2P',monospace;font-size:7px;color:#aaa;" onclick="resumeAudio()">🔊音リロード</span>
   </div>
   <canvas id="gc"></canvas>
   <div id="controls">
@@ -88,6 +119,18 @@
       <div class="btn btn-jump" id="bJ">↑</div>
     </div>
   </div>
+</div>
+<div id="menu-btn" onclick="toggleMenu()">⚙️</div>
+<div id="menu-panel" class="hidden">
+  <div class="menu-row">
+    <span>BGM</span>
+    <div class="toggle on" id="tog-bgm" onclick="toggleBGM(this)"></div>
+  </div>
+  <div class="menu-row">
+    <span>SE</span>
+    <div class="toggle on" id="tog-se" onclick="toggleSE(this)"></div>
+  </div>
+  <button class="menu-reload" onclick="resumeAudio()">🔊 音リロード</button>
 </div>
 <div id="stage-banner"></div>
 <div id="overlay">
@@ -103,6 +146,42 @@
 </div>
 
 <script>
+let menuOpen = false;
+let bgmOn = true, seOn = true;
+
+function toggleMenu() {
+  menuOpen = !menuOpen;
+  document.getElementById('menu-panel').classList.toggle('hidden', !menuOpen);
+  if (typeof gState !== 'undefined') {
+    if (menuOpen && gState === 'playing') {
+      gState = 'paused';
+    } else if (!menuOpen && gState === 'paused') {
+      gState = 'playing';
+      requestAnimationFrame(loop);
+    }
+  }
+}
+document.addEventListener('touchstart', e => {
+  if (menuOpen && !e.target.closest('#menu-btn') && !e.target.closest('#menu-panel')) {
+    menuOpen = false;
+    document.getElementById('menu-panel').classList.add('hidden');
+    if (typeof gState !== 'undefined' && gState === 'paused') {
+      gState = 'playing';
+      requestAnimationFrame(loop);
+    }
+  }
+}, { passive: true });
+
+function toggleBGM(el) {
+  bgmOn = !bgmOn;
+  el.classList.toggle('on', bgmOn);
+  if (bgmOn) startBGM(); else stopBGM();
+}
+function toggleSE(el) {
+  seOn = !seOn;
+  el.classList.toggle('on', seOn);
+}
+
 async function loadScripts(){
   const files = ['bgm.js','stage.js','draw.js','game.js'];
   const v = Date.now();
@@ -115,7 +194,6 @@ async function loadScripts(){
   }
 }
 loadScripts();
-
 </script>
 
 </body>
