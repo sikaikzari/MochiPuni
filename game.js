@@ -276,27 +276,31 @@ function update() {
       if (e.y > WORLD_H + 60) e.alive = false;
     }
 
-    if (pl.inv <= 0 && hit(pl.x, pl.y, pl.w, pl.h, e.x, e.y, e.w, e.h)) {
+    // ===== 踏み判定（無敵中でも通る） =====
+    if (hit(pl.x, pl.y, pl.w, pl.h, e.x, e.y, e.w, e.h)) {
+      // 踏み成功条件：下向きに落ちていて、かつ敵の上3/4より上にいれば踏み
+      const stomping = pl.vy > 0 && pl.y + pl.h < e.y + e.h * 0.75;
       if (e.type === 'fuwaghost') {
-        if (pl.vy > 0 && pl.y + pl.h < e.y + e.h * 0.6) {
+        if (stomping) {
           e.alive = false; pl.vy = -12; score += 50;
           dieFx(e.x + 17, e.y + 10, '#aabbff'); sfxStomp(); ui();
-        } else { loseLife(); return; }
+        } else if (pl.inv <= 0) { loseLife(); return; }
       }
       else if (e.type === 'ghost' || e.type === 'uni') {
-        loseLife(); return;
+        if (pl.inv <= 0) { loseLife(); return; }
       }
       else if (e.spiky) {
-        loseLife(); return;
+        if (pl.inv <= 0) { loseLife(); return; }
       }
       else {
-        // yochi：上から踏めば倒せる
-        if (pl.vy > 0 && pl.y + pl.h < e.y + e.h * 0.52) {
+        // yochi：横からぶつかった時だけ負け、それ以外は踏み勝ち
+        if (stomping) {
           e.alive = false; pl.vy = -12; score += 50; dieFx(e.x + 13, e.y + 13); sfxStomp(); ui();
-        } else { loseLife(); return; }
+        } else if (pl.inv <= 0) { loseLife(); return; }
       }
     }
 
+    // ===== キック判定（無敵中でも通る） =====
     if (pl.kick > 0) {
       const kx = pl.face > 0 ? pl.x + pl.w - 4 : pl.x - 12;
       if (hit(kx, pl.y + pl.h * 0.25, 16, pl.h * 0.55, e.x, e.y, e.w, e.h)) {
