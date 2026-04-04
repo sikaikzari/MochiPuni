@@ -127,7 +127,7 @@ function startGame() {
   stopBGM(); sfxStart(); genWorld();
   document.getElementById('overlay').classList.add('hidden');
   gState = 'playing'; ui();
-  setTimeout(() => startBGM(), 800);
+  // 1面はBGMなし、2面以降から鳴る
   requestAnimationFrame(loop);
 }
 document.getElementById('startBtn').addEventListener('click', startGame);
@@ -278,7 +278,6 @@ function update() {
 
     // ===== 踏み判定（無敵中でも通る） =====
     if (hit(pl.x, pl.y, pl.w, pl.h, e.x, e.y, e.w, e.h)) {
-      // 踏み成功条件：下向きに落ちていて、かつ敵の上3/4より上にいれば踏み
       const stomping = pl.vy > 0 && pl.y + pl.h < e.y + e.h * 0.75;
       if (e.type === 'fuwaghost') {
         if (stomping) {
@@ -293,7 +292,6 @@ function update() {
         if (pl.inv <= 0) { loseLife(); return; }
       }
       else {
-        // yochi：横からぶつかった時だけ負け、それ以外は踏み勝ち
         if (stomping) {
           e.alive = false; pl.vy = -12; score += 50; dieFx(e.x + 13, e.y + 13); sfxStomp(); ui();
         } else if (pl.inv <= 0) { loseLife(); return; }

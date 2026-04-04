@@ -1,6 +1,6 @@
 // ===== Audio =====
 let audioCtx=null, bgmGain=null, bgmPlaying=false;
-let bgmVol=0.07, seVol=1.0;
+let bgmVol=0.07, seVol=1.0, bgmOn=false;
 function getAudio(){ if(!audioCtx) audioCtx=new(window.AudioContext||window.webkitAudioContext)(); return audioCtx; }
 function playTone(freq,type,dur,vol,startFreq){
   try{
@@ -13,7 +13,7 @@ function playTone(freq,type,dur,vol,startFreq){
     osc.start(ac.currentTime); osc.stop(ac.currentTime+dur);
   }catch(e){}
 }
-function sfxJump(){ if(seVol===0) return; playTone(600,'square',0.12,0.18,280); setTimeout(()=>playTone(900,'square',0.08,0.1),60); }
+function sfxJump(){ if(seVol===0) return; playTone(420,'sine',0.18,0.10,260); setTimeout(()=>playTone(600,'sine',0.14,0.07),80); }
 function sfxCoin(){ if(seVol===0) return; playTone(1200,'sine',0.08,0.15); setTimeout(()=>playTone(1600,'sine',0.1,0.12),50); setTimeout(()=>playTone(2000,'sine',0.12,0.1),110); }
 function sfxStomp(){ if(seVol===0) return; playTone(220,'sine',0.1,0.2,440); }
 function sfxDamage(){ if(seVol===0) return; playTone(150,'sawtooth',0.25,0.3,400); setTimeout(()=>playTone(100,'sawtooth',0.2,0.2,200),80); }
@@ -25,14 +25,15 @@ function setSEVol(v){ seVol=v; }
 function resumeAudio(){
   if(audioCtx) audioCtx.resume();
   stopBGM();
-  setTimeout(()=>{ if(bgmOn) startBGM(); },300);
+  setTimeout(()=>{ if(stage>=2 && typeof gState!=='undefined' && gState==='playing') startBGM(); },300);
 }
 
 const BGM_NOTES=[[523,.25],[659,.25],[784,.25],[880,.25],[784,.25],[659,.25],[523,.25],[523,.5],[587,.25],[698,.25],[784,.25],[880,.5],[784,.25],[698,.25],[587,.25],[523,.5],[659,.25],[784,.25],[988,.25],[1047,.25],[988,.25],[784,.25],[659,.25],[659,.5],[523,.25],[659,.25],[784,.25],[1047,.5],[784,.5],[659,.25],[523,1.0]];
 function startBGM(){
+  bgmOn=true;
   if(bgmPlaying) return;
   try{
-    const ac=getAudio(); bgmGain=ac.createGain(); bgmGain.gain.value=0.07; bgmGain.connect(ac.destination); bgmPlaying=true; scheduleBGM(ac.currentTime);
+    const ac=getAudio(); bgmGain=ac.createGain(); bgmGain.gain.value=bgmVol; bgmGain.connect(ac.destination); bgmPlaying=true; scheduleBGM(ac.currentTime);
   }catch(e){}
 }
 function scheduleBGM(st){
@@ -54,4 +55,4 @@ function scheduleBGM(st){
   });
   if(bgmPlaying) setTimeout(()=>scheduleBGM(ac.currentTime),(total-0.5)*1000);
 }
-function stopBGM(){ bgmPlaying=false; if(bgmGain){try{bgmGain.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.5);}catch(e){} bgmGain=null;} }
+function stopBGM(){ bgmOn=false; bgmPlaying=false; if(bgmGain){try{bgmGain.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.5);}catch(e){} bgmGain=null;} }
