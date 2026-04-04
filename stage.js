@@ -64,9 +64,9 @@ function genStage1() {
       coinArr.push({ x: bx + 8 + c * 32, y: by - 30, col: false, ph: Math.random() * Math.PI * 2 });
     }
 
-    // 浮き床の上のよちよち：1床につき最大1体
+    // 浮き床の上のよちよち：1床につき最大1体、中央付近に固定配置
     if (Math.random() > 0.3) {
-      const startX = bx + Math.floor(Math.random() * Math.max(1, bw - 26));
+      const startX = bx + Math.floor(bw / 2) - 13;
       enms.push(makeYochi(startX, by - 26, bx, bw));
     }
 
