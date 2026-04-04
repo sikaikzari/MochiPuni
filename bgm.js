@@ -13,7 +13,12 @@ function playTone(freq,type,dur,vol,startFreq){
     osc.start(ac.currentTime); osc.stop(ac.currentTime+dur);
   }catch(e){}
 }
-function sfxJump(){ if(seVol===0) return; playTone(420,'sine',0.18,0.10,260); setTimeout(()=>playTone(600,'sine',0.14,0.07),80); }
+function sfxJump(){
+  if(seVol===0) return;
+  // ぽよん：低→高にピッチがふわっと上がるsine
+  playTone(640,'sine',0.25,0.08,200);
+  setTimeout(()=>playTone(820,'sine',0.18,0.05,500),55);
+}
 function sfxCoin(){ if(seVol===0) return; playTone(1200,'sine',0.08,0.15); setTimeout(()=>playTone(1600,'sine',0.1,0.12),50); setTimeout(()=>playTone(2000,'sine',0.12,0.1),110); }
 function sfxStomp(){ if(seVol===0) return; playTone(220,'sine',0.1,0.2,440); }
 function sfxDamage(){ if(seVol===0) return; playTone(150,'sawtooth',0.25,0.3,400); setTimeout(()=>playTone(100,'sawtooth',0.2,0.2,200),80); }
@@ -25,7 +30,7 @@ function setSEVol(v){ seVol=v; }
 function resumeAudio(){
   if(audioCtx) audioCtx.resume();
   stopBGM();
-  setTimeout(()=>{ if(stage>=2 && typeof gState!=='undefined' && gState==='playing') startBGM(); },300);
+  setTimeout(()=>{ if(bgmOn) startBGM(); },300);
 }
 
 const BGM_NOTES=[[523,.25],[659,.25],[784,.25],[880,.25],[784,.25],[659,.25],[523,.25],[523,.5],[587,.25],[698,.25],[784,.25],[880,.5],[784,.25],[698,.25],[587,.25],[523,.5],[659,.25],[784,.25],[988,.25],[1047,.25],[988,.25],[784,.25],[659,.25],[659,.5],[523,.25],[659,.25],[784,.25],[1047,.5],[784,.5],[659,.25],[523,1.0]];

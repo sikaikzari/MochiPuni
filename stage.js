@@ -66,7 +66,7 @@ function genStage1() {
 
     if (Math.random() > 0.3) {
       const startX = bx + Math.floor(bw / 2) - 13;
-      enms.push(makeYochi(startX, by - 26, bx, bw));
+      enms.push(makeYochi(startX, by - 30, bx, bw));
     }
 
     // ふわゴースト（よちよちサイズ、1面用）
@@ -77,9 +77,9 @@ function genStage1() {
 
   // 地面を歩くよちよち：各個体が自分のいるタイル範囲内だけ歩く
   const gndRanges = [
-    { left: 200,  right: 870  },
-    { left: 1020, right: 1970 },
-    { left: 2120, right: 3050 },
+    { left: 200,  right: 770  },  // スタート〜穴1前タイル右端(580+190)
+    { left: 1090, right: 1960 },  // 穴1後タイル左端(1090)〜穴2前タイル右端(1770+190)
+    { left: 2110, right: 3150 },  // 穴2後タイル左端(2110)〜ゴール手前
   ];
   gndRanges.forEach(({ left, right }) => {
     const rangeW = right - left;
@@ -87,7 +87,6 @@ function genStage1() {
     for (let n = 0; n < count; n++) {
       const gndX = left + 40 + n * Math.floor(rangeW / count) + Math.random() * 60;
       if (gndX + 26 > right) continue;
-      // platX=left, platW=rangeW（幅）で折り返し範囲を正しく指定
       enms.push(makeYochi(gndX, GND() - 26, left, rangeW));
     }
   });
