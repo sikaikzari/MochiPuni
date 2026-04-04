@@ -237,11 +237,7 @@ function update() {
       if (e.y > WORLD_H + 60) e.alive = false;
     } else {
       // flyingは水平移動のみ
-      if (e.type !== 'uni' && e.type !== 'step' && e.type !== 'ghost') {
-        e.x += e.vx; e.y += e.vy;
-      } else {
-        e.x += e.vx;
-      }
+enms.push({ x: bx + 30, y: by - 26, w: 26, h: 26, vx: -(0.4 + Math.random() * 0.3), vy: 0, alive: true, flying: true, spiky: false, type: 'yochi', knockvx: 0, knockvy: 0, platX: bx, platW: bw, baseY: by - 26 });
     }
 
     if (pl.inv <= 0 && hit(pl.x, pl.y, pl.w, pl.h, e.x, e.y, e.w, e.h)) {
