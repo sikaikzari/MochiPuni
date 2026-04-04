@@ -51,9 +51,10 @@ function genStage1() {
       coinArr.push({ x: bx + 8 + c * 32, y: by - 30, col: false, ph: Math.random() * Math.PI * 2 });
     }
     // よちよち敵（地面歩き）
-    if (i % 5 === 2) {
-      enms.push({ x: bx + 30, y: GND() - 28, w: 26, h: 26, vx: -(0.4 + Math.random() * 0.3), vy: 0, alive: true, flying: false, spiky: false, type: 'yochi', knockvx: 0, knockvy: 0 });
-    }
+    if (i % 3 === 0 || i % 3 === 1) {
+  enms.push({ x: bx + 30, y: GND() - 28, w: 26, h: 26, vx: -(0.4 + Math.random() * 0.3), vy: 0, alive: true, flying: false, spiky: false, type: 'yochi', knockvx: 0, knockvy: 0 });
+  enms.push({ x: bx + 30, y: by - 28, w: 26, h: 26, vx: -(0.4 + Math.random() * 0.3), vy: 0, alive: true, flying: false, spiky: false, type: 'yochi', knockvx: 0, knockvy: 0 });
+}
     // ゴースト（空中浮遊・触ると痛い）
     if (i % 4 === 1) {
       enms.push({ x: bx + 20, y: by - 50, w: 36, h: 34, vx: -(0.5 + Math.random() * 0.3), vy: 0, alive: true, flying: true, spiky: true, type: 'ghost', knockvx: 0, knockvy: 0, floatPh: Math.random() * Math.PI * 2 });
@@ -96,7 +97,7 @@ function genStage2() {
     }
   });
 
-plats.push({ x: 1430, y: GND() - 110, w: 20, h: 60, t: 'checkpoint' });
+plats.push({ x: 1465, y: GND() - 110, w: 20, h: 60, t: 'checkpoint' });
 }
 
 function genStage3() {

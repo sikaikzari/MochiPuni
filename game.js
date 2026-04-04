@@ -108,7 +108,8 @@ function startGame() {
   try { getAudio().resume(); } catch (e) { }
   score = 0; coins = 0; lives = 3; frame = 0; camX = 0; camY = 0; stage = 1;
   pl.x = 80; pl.y = GND() - PH - 10; pl.vx = 0; pl.vy = 0; pl.ground = false; pl.jumps = 2; pl.inv = 0; pl.kick = 0; pl.leg = 0;
-  stopBGM(); genWorld();
+  stopBGM(); sfxStart(); genWorld();
+
   document.getElementById('overlay').classList.add('hidden');
   gState = 'playing'; ui(); requestAnimationFrame(loop);
 }
