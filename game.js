@@ -64,17 +64,30 @@ function coinFx(x, y) { for (let i = 0; i < 6; i++) parts.push({ x, y, vx: (Math
 function dieFx(x, y, col = '#ff4455') { for (let i = 0; i < 10; i++) parts.push({ x, y, vx: (Math.random() - .5) * 7, vy: -(Math.random() * 5 + 2), life: 28, ml: 28, col, r: 4 }); }
 function kickFx(x, y) { for (let i = 0; i < 8; i++) parts.push({ x, y, vx: (Math.random() - .5) * 8, vy: -(Math.random() * 3 + 1), life: 20, ml: 20, col: '#ff9900', r: 3 }); }
 
-// ===== 安全なリスポーン位置を探す =====
+// ===== 安全なリスポーン位置 =====
 function safeRespawnX() {
-  // チェックポイントが有効ならそこから
   if (checkpoint && checkpoint.active) return checkpoint.x;
-  // なければカメラ位置か80の大きい方、かつ地面がある場所を探す
   const baseX = Math.max(camX + 40, 80);
   for (let tx = baseX; tx < baseX + 400; tx += 20) {
     const onGround = plats.some(p => p.t === 'g' && tx >= p.x && tx <= p.x + p.w);
     if (onGround) return tx;
   }
   return 80;
+}
+
+// ===== 3面リスポーン：ふわゴースト復活 =====
+function respawnFuwaghosts() {
+  if (stage !== 3) return;
+  for (const e of enms) {
+    if (e.type === 'fuwaghost' && e.respawnable && !e.alive) {
+      e.alive = true;
+      e.x = e.initX; e.y = e.initY;
+      e.vx = 0; e.vy = 0;
+      e.knockvx = 0; e.knockvy = 0;
+      e.floatPh = e.initPh;
+      delete e.baseY; // baseYをリセットして再計算させる
+    }
+  }
 }
 
 // ===== UI =====
@@ -89,10 +102,12 @@ function showOv(title, desc, btn) {
 
 function loseLife() {
   sfxDamage(); lives--; ui();
-  if (lives <= 0) { gState = 'over'; showOv('GAME OVER', `SCORE: ${score}<br>COIN: ${coins}<br><br>またがんばるゆ！`, '▶ TRY AGAIN'); }
-  else {
+  if (lives <= 0) {
+    gState = 'over'; showOv('GAME OVER', `SCORE: ${score}<br>COIN: ${coins}<br><br>またがんばるゆ！`, '▶ TRY AGAIN');
+  } else {
     const rx = safeRespawnX();
     pl.x = rx; pl.y = GND() - PH - 10; pl.vx = 0; pl.vy = 0; pl.inv = 120;
+    respawnFuwaghosts();
   }
 }
 
@@ -100,7 +115,8 @@ function nextStage() {
   stage++; gState = 'playing';
   pl.x = 80; pl.y = GND() - PH - 10; pl.vx = 0; pl.vy = 0; pl.ground = false; pl.jumps = 2; pl.inv = 0; pl.kick = 0;
   camX = 0; camY = 0; genWorld(); showBanner(`STAGE ${stage}`);
-  if (!bgmPlaying) startBGM();
+  stopBGM();
+  setTimeout(() => startBGM(), 300);
   requestAnimationFrame(loop);
 }
 
@@ -109,9 +125,10 @@ function startGame() {
   score = 0; coins = 0; lives = 3; frame = 0; camX = 0; camY = 0; stage = 1;
   pl.x = 80; pl.y = GND() - PH - 10; pl.vx = 0; pl.vy = 0; pl.ground = false; pl.jumps = 2; pl.inv = 0; pl.kick = 0; pl.leg = 0;
   stopBGM(); sfxStart(); genWorld();
-
   document.getElementById('overlay').classList.add('hidden');
-  gState = 'playing'; ui(); requestAnimationFrame(loop);
+  gState = 'playing'; ui();
+  setTimeout(() => startBGM(), 800);
+  requestAnimationFrame(loop);
 }
 document.getElementById('startBtn').addEventListener('click', startGame);
 document.getElementById('overlay').querySelector('button').addEventListener('click', startGame);
@@ -125,10 +142,25 @@ function updateCamera() {
   const topMargin = H * 0.22;
   const botMargin = H * 0.75;
   let tgtY = camY;
-  if (plScreenY < topMargin) { tgtY = pl.y - topMargin; }
-  else if (plScreenY + PH > botMargin) { tgtY = pl.y + PH - botMargin; }
+  if (plScreenY < topMargin) tgtY = pl.y - topMargin;
+  else if (plScreenY + PH > botMargin) tgtY = pl.y + PH - botMargin;
   tgtY = Math.max(0, Math.min(tgtY, WORLD_H - H));
   camY += (tgtY - camY) * 0.1;
+}
+
+// ===== platX/platW で端折り返し（よちよち・スパイク共通） =====
+function updatePlatWalker(e) {
+  e.x += e.vx;
+  // 右端：スプライト右端が platX+platW を超えたら折り返し
+  if (e.vx > 0 && e.x + e.w >= e.platX + e.platW) {
+    e.x = e.platX + e.platW - e.w;
+    e.vx = -Math.abs(e.vx);
+  }
+  // 左端：スプライト左端が platX を下回ったら折り返し
+  if (e.vx < 0 && e.x <= e.platX) {
+    e.x = e.platX;
+    e.vx = Math.abs(e.vx);
+  }
 }
 
 // ===== Update =====
@@ -143,13 +175,10 @@ function update() {
 
   for (const p of plats) {
     if (!hit(pl.x, pl.y, pl.w, pl.h, p.x, p.y, p.w, p.h)) continue;
-
-    // チェックポイント
     if (p.t === 'checkpoint') {
       if (!checkpoint.active) { checkpoint.active = true; checkpoint.x = p.x; }
       continue;
     }
-
     if (p.t === 'goal') {
       const tx = p.x + p.w / 2 - 6;
       if (hit(pl.x, pl.y, pl.w, pl.h, tx, p.y, 12, p.h)) {
@@ -190,17 +219,15 @@ function update() {
   for (const e of enms) {
     if (!e.alive) continue;
 
-    // 羽ウニの上下移動
+    // 羽ウニ上下
     if (e.type === 'uni') {
       e.y = (e.baseY || (e.baseY = e.y)) + Math.sin((e.floatPh || 0) + frame * 0.025) * (e.floatRange || 50);
     }
-
-    // ステップ敵のふわふわ
-    if (e.type === 'step') {
-      e.y = (e.baseY || (e.baseY = e.y)) + Math.sin((e.floatPh || 0) + frame * 0.03) * 4;
+    // ふわゴーストふわふわ
+    if (e.type === 'fuwaghost') {
+      e.y = (e.baseY || (e.baseY = e.y)) + Math.sin((e.floatPh || 0) + frame * 0.05) * 6;
     }
-
-    // ゴーストのふわふわ
+    // 赤目ゴーストふわふわ
     if (e.type === 'ghost') {
       e.y = (e.baseY || (e.baseY = e.y)) + Math.sin((e.floatPh || 0) + frame * 0.04) * 5;
     }
@@ -215,8 +242,22 @@ function update() {
       continue;
     }
 
-    // flying以外は重力・床判定
-    if (!e.flying) {
+    // yochi・spike：platX/platW で端折り返し歩き
+    if ((e.type === 'yochi' || e.type === 'spike') && e.platX !== undefined) {
+      updatePlatWalker(e);
+      // yは固定（baseY）
+      if (e.baseY !== undefined) e.y = e.baseY;
+    }
+    // それ以外のflyingは水平移動のみ
+    else if (e.flying) {
+      if (e.type !== 'uni' && e.type !== 'fuwaghost' && e.type !== 'ghost') {
+        e.x += e.vx; e.y += e.vy;
+      } else {
+        e.x += e.vx;
+      }
+    }
+    // flying:false は物理（2面スパイクの残骸対応、今後用）
+    else {
       e.vy += 0.6;
       e.x += e.vx; e.y += e.vy;
       let onPlat = false;
@@ -228,52 +269,35 @@ function update() {
         if (ox < oy) e.vx *= -1;
         else { e.y = p.y - e.h; e.vy = 0; onPlat = true; }
       }
-      // 地面の端で折り返す（穴に落ちないように）
       if (onPlat) {
         const ahead = e.x + (e.vx > 0 ? e.w + 2 : -2);
-        const edgeCheck = plats.some(p => p.t === 'g' && ahead >= p.x && ahead <= p.x + p.w);
-        if (!edgeCheck) e.vx *= -1;
+        if (!plats.some(p => p.t === 'g' && ahead >= p.x && ahead <= p.x + p.w)) e.vx *= -1;
       }
       if (e.y > WORLD_H + 60) e.alive = false;
-    } else {
-      // flyingは水平移動のみ
-            if (e.type === 'yochi' && e.platX !== undefined) {
-        e.x += e.vx;
-        e.y = e.baseY;
-        if (e.x < e.platX) { e.x = e.platX; e.vx *= -1; }
-        if (e.x + e.w > e.platX + e.platW) { e.x = e.platX + e.platW - e.w; e.vx *= -1; }
-      } else if (e.type !== 'uni' && e.type !== 'step' && e.type !== 'ghost') {
-        e.x += e.vx; e.y += e.vy;
-      } else {
-        e.x += e.vx;
-      }
-
     }
 
     if (pl.inv <= 0 && hit(pl.x, pl.y, pl.w, pl.h, e.x, e.y, e.w, e.h)) {
-      // ステップ敵：上から踏んだら倒せる（一回限り足場）
-      if (e.type === 'step') {
+      if (e.type === 'fuwaghost') {
         if (pl.vy > 0 && pl.y + pl.h < e.y + e.h * 0.6) {
-          e.alive = false; pl.vy = -12; score += 50; dieFx(e.x + 15, e.y + 10, '#44aaff'); sfxStomp(); ui();
+          e.alive = false; pl.vy = -12; score += 50;
+          dieFx(e.x + 17, e.y + 10, '#aabbff'); sfxStomp(); ui();
         } else { loseLife(); return; }
       }
-      // ゴーストと羽ウニ：触れたら即死
       else if (e.type === 'ghost' || e.type === 'uni') {
         loseLife(); return;
       }
-      // スパイク：触れたら即死
       else if (e.spiky) {
         loseLife(); return;
       }
-      // よちよち：上から踏めば倒せる
       else {
+        // yochi：上から踏めば倒せる
         if (pl.vy > 0 && pl.y + pl.h < e.y + e.h * 0.52) {
           e.alive = false; pl.vy = -12; score += 50; dieFx(e.x + 13, e.y + 13); sfxStomp(); ui();
         } else { loseLife(); return; }
       }
     }
 
-    if (pl.kick > 0 && e.type !== 'ghost') {
+    if (pl.kick > 0) {
       const kx = pl.face > 0 ? pl.x + pl.w - 4 : pl.x - 12;
       if (hit(kx, pl.y + pl.h * 0.25, 16, pl.h * 0.55, e.x, e.y, e.w, e.h)) {
         e.knockvx = pl.face * 13; e.knockvy = -7; e.vx = 0; e.vy = 0;

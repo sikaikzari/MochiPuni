@@ -30,7 +30,6 @@ function drawPlat(p) {
   if (sx + p.w < 0 || sx > W || sy + p.h < 0 || sy > H) return;
 
   if (p.t === 'checkpoint') {
-    // チェックポイント旗
     ctx.fillStyle = checkpoint.active ? '#ffdd00' : '#888888';
     ctx.fillRect(sx + 8, sy, 4, p.h);
     ctx.fillStyle = checkpoint.active ? '#ff8800' : '#aaaaaa';
@@ -97,48 +96,82 @@ function drawEnm(e) {
     ctx.translate(sx + e.w / 2, sy + e.h / 2);
     if (e.vx > 0) ctx.scale(-1, 1);
     const bob = Math.sin(frame * 0.15) * 2;
-    // 体
     const bg = ctx.createRadialGradient(-2, -4, 1, 0, -2, 13);
     bg.addColorStop(0, '#fffbe8'); bg.addColorStop(1, '#e8d080');
     ctx.fillStyle = bg;
     ctx.beginPath(); ctx.ellipse(0, bob, 12, 13, 0, 0, Math.PI * 2); ctx.fill();
     ctx.strokeStyle = '#aa8800'; ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.ellipse(0, bob, 12, 13, 0, 0, Math.PI * 2); ctx.stroke();
-    // 目
     ctx.fillStyle = '#333';
     ctx.beginPath(); ctx.arc(-4, bob - 3, 2.2, 0, Math.PI * 2); ctx.fill();
     ctx.beginPath(); ctx.arc(3, bob - 3, 2.2, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = 'white';
     ctx.beginPath(); ctx.arc(-3.2, bob - 3.5, 0.8, 0, Math.PI * 2); ctx.fill();
     ctx.beginPath(); ctx.arc(3.8, bob - 3.5, 0.8, 0, Math.PI * 2); ctx.fill();
-    // 足
     const legSwing = Math.sin(frame * 0.2) * 4;
     ctx.fillStyle = '#c8a020';
     ctx.beginPath(); ctx.ellipse(-4, bob + 10 + legSwing * 0.3, 3.5, 4, legSwing * 0.05, 0, Math.PI * 2); ctx.fill();
     ctx.beginPath(); ctx.ellipse(4, bob + 10 - legSwing * 0.3, 3.5, 4, -legSwing * 0.05, 0, Math.PI * 2); ctx.fill();
   }
 
-  // ===== ゴースト =====
+  // ===== 赤目ゴースト（触ると即死・大きめ） =====
   else if (e.type === 'ghost') {
     ctx.translate(sx + e.w / 2, sy + e.h / 2);
     if (e.vx > 0) ctx.scale(-1, 1);
     const floatY = Math.sin((e.floatPh || 0) + frame * 0.04) * 5;
     ctx.translate(0, floatY);
-    ctx.globalAlpha = 0.62 + Math.sin(frame * 0.04) * 0.1;
-    const gg = ctx.createRadialGradient(0, -4, 2, 0, 0, 18);
-    gg.addColorStop(0, '#eeeeff'); gg.addColorStop(0.65, '#99aadd'); gg.addColorStop(1, 'rgba(80,100,200,0)');
+    ctx.globalAlpha = 0.68 + Math.sin(frame * 0.04) * 0.1;
+    // 体（大きく：radius 22→28）
+    const gg = ctx.createRadialGradient(0, -5, 3, 0, 0, 26);
+    gg.addColorStop(0, '#eeeeff'); gg.addColorStop(0.6, '#99aadd'); gg.addColorStop(1, 'rgba(80,100,200,0)');
     ctx.fillStyle = gg;
-    ctx.beginPath(); ctx.arc(0, -5, 16, Math.PI, 0);
-    ctx.lineTo(16, 8);
-    for (let gx = 16; gx >= -16; gx -= 8) ctx.lineTo(gx - 4, gx % 16 === 0 ? 2 : 10);
+    ctx.beginPath(); ctx.arc(0, -6, 22, Math.PI, 0);
+    ctx.lineTo(22, 10);
+    for (let gx = 22; gx >= -22; gx -= 11) ctx.lineTo(gx - 5, gx % 22 === 0 ? 2 : 14);
     ctx.closePath(); ctx.fill();
     ctx.globalAlpha = 1;
+    // 赤目（大きく）
     ctx.fillStyle = '#2a3a5a';
-    ctx.beginPath(); ctx.ellipse(-5, -7, 3.2, 4, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(5, -7, 3.2, 4, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = 'rgba(255,80,80,0.9)';
-    ctx.beginPath(); ctx.arc(-5, -7, 2, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.arc(5, -7, 2, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(-7, -9, 4.5, 5.5, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(7, -9, 4.5, 5.5, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,60,60,0.95)';
+    ctx.beginPath(); ctx.arc(-7, -9, 3, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(7, -9, 3, 0, Math.PI * 2); ctx.fill();
+    // 光の点
+    ctx.fillStyle = 'rgba(255,200,200,0.9)';
+    ctx.beginPath(); ctx.arc(-8.5, -10.5, 1.2, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(5.5, -10.5, 1.2, 0, Math.PI * 2); ctx.fill();
+  }
+
+  // ===== ふわゴースト（踏んで倒せる・3面用） =====
+  else if (e.type === 'fuwaghost') {
+    ctx.translate(sx + e.w / 2, sy + e.h / 2);
+    if (e.vx > 0) ctx.scale(-1, 1);
+    const floatY = Math.sin((e.floatPh || 0) + frame * 0.05) * 6;
+    ctx.translate(0, floatY);
+    ctx.globalAlpha = 0.55 + Math.sin(frame * 0.06) * 0.12;
+    // 体（丸っこく・パステル）
+    const fg = ctx.createRadialGradient(0, -3, 2, 0, 0, 18);
+    fg.addColorStop(0, '#ffffff'); fg.addColorStop(0.5, '#ccddff'); fg.addColorStop(1, 'rgba(160,190,255,0)');
+    ctx.fillStyle = fg;
+    ctx.beginPath(); ctx.arc(0, -4, 18, Math.PI, 0);
+    ctx.lineTo(18, 8);
+    for (let gx = 18; gx >= -18; gx -= 9) ctx.lineTo(gx - 4, gx % 18 === 0 ? 1 : 11);
+    ctx.closePath(); ctx.fill();
+    ctx.globalAlpha = 1;
+    // 黒目（かわいい丸目）
+    ctx.fillStyle = '#445577';
+    ctx.beginPath(); ctx.ellipse(-5, -6, 3.5, 4, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(5, -6, 3.5, 4, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(100,150,255,0.9)';
+    ctx.beginPath(); ctx.arc(-5, -6, 2, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(5, -6, 2, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'white';
+    ctx.beginPath(); ctx.arc(-6, -7, 0.9, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(4, -7, 0.9, 0, Math.PI * 2); ctx.fill();
+    // にっこり口
+    ctx.strokeStyle = '#556688'; ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.arc(0, -2, 4, 0.1, Math.PI - 0.1); ctx.stroke();
   }
 
   // ===== ステップ敵（踏んで渡る足場） =====
@@ -146,18 +179,15 @@ function drawEnm(e) {
     ctx.translate(sx + e.w / 2, sy + e.h / 2);
     const floatY = Math.sin((e.floatPh || 0) + frame * 0.03) * 4;
     ctx.translate(0, floatY);
-    // 丸っこい雲みたいな体
     const sg = ctx.createRadialGradient(0, -2, 2, 0, 0, 20);
     sg.addColorStop(0, '#aaddff'); sg.addColorStop(1, '#4488cc');
     ctx.fillStyle = sg;
     ctx.beginPath(); ctx.ellipse(0, 0, 22, 12, 0, 0, Math.PI * 2); ctx.fill();
     ctx.strokeStyle = '#2266aa'; ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.ellipse(0, 0, 22, 12, 0, 0, Math.PI * 2); ctx.stroke();
-    // 顔
     ctx.fillStyle = '#333';
     ctx.beginPath(); ctx.arc(-6, -2, 2, 0, Math.PI * 2); ctx.fill();
     ctx.beginPath(); ctx.arc(6, -2, 2, 0, Math.PI * 2); ctx.fill();
-    // にっこり
     ctx.strokeStyle = '#333'; ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.arc(0, 0, 5, 0.2, Math.PI - 0.2); ctx.stroke();
   }
@@ -166,8 +196,7 @@ function drawEnm(e) {
   else if (e.type === 'uni') {
     ctx.translate(sx + e.w / 2, sy + e.h / 2);
     const floatY = Math.sin((e.floatPh || 0) + frame * 0.025) * (e.floatRange || 50);
-    ctx.translate(0, floatY * 0.01); // 実際の移動はgame.jsで
-    // 羽
+    ctx.translate(0, floatY * 0.01);
     const wingFlap = Math.sin(frame * 0.2) * 0.3;
     ctx.save(); ctx.rotate(-0.3 + wingFlap);
     ctx.fillStyle = 'rgba(200,240,255,0.7)';
@@ -177,12 +206,10 @@ function drawEnm(e) {
     ctx.fillStyle = 'rgba(200,240,255,0.7)';
     ctx.beginPath(); ctx.ellipse(12, -8, 10, 5, 0.5, 0, Math.PI * 2); ctx.fill();
     ctx.restore();
-    // 体
     const ub = ctx.createRadialGradient(0, 0, 2, 0, 0, 14);
     ub.addColorStop(0, '#ffaacc'); ub.addColorStop(1, '#cc2266');
     ctx.fillStyle = ub;
     ctx.beginPath(); ctx.arc(0, 0, 13, 0, Math.PI * 2); ctx.fill();
-    // トゲ
     ctx.fillStyle = '#aa1144';
     for (let a = 0; a < Math.PI * 2; a += Math.PI / 5) {
       const tx = Math.cos(a) * 13, ty = Math.sin(a) * 13;
@@ -191,7 +218,6 @@ function drawEnm(e) {
       ctx.lineTo(Math.cos(a + 0.25) * 13, Math.sin(a + 0.25) * 13);
       ctx.fill();
     }
-    // 目
     ctx.fillStyle = '#fff';
     ctx.beginPath(); ctx.arc(-4, -2, 3, 0, Math.PI * 2); ctx.fill();
     ctx.beginPath(); ctx.arc(4, -2, 3, 0, Math.PI * 2); ctx.fill();

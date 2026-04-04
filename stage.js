@@ -3,7 +3,6 @@ const WLEN = 3200;
 const WORLD_H = 800;
 const GND = () => WORLD_H - 36;
 
-// チェックポイント（将来用）
 let checkpoint = { x: 80, active: false };
 
 function genWorld() {
@@ -22,9 +21,21 @@ function genWorld() {
   }
 }
 
+// よちよちを生成するヘルパー（浮き床上・地面上どちらでも使う）
+function makeYochi(x, y, platX, platW) {
+  return {
+    x, y, w: 26, h: 26,
+    vx: -(0.4 + Math.random() * 0.3), vy: 0,
+    alive: true, flying: true, spiky: false, type: 'yochi',
+    knockvx: 0, knockvy: 0,
+    platX, platW,
+    baseY: y
+  };
+}
+
 function genStage1() {
-  const holes = [700, 1200, 1900, 2500];
-  const holeW = 130;
+  const holes = [900, 2000];
+  const holeW = 110;
   let gx = -100;
   while (gx < WLEN + 200) {
     const isHole = holes.some(hx => gx + 190 > hx && gx < hx + holeW);
@@ -32,15 +43,17 @@ function genStage1() {
     gx += 170;
   }
 
+  // 浮き床9個
   const platforms = [
-    { x: 150, h: 140, w: 110 }, { x: 370, h: 100, w: 90 },
-    { x: 560, h: 170, w: 120 }, { x: 760, h: 120, w: 100 },
-    { x: 950, h: 150, w: 80 },  { x: 1130, h: 90, w: 110 },
-    { x: 1320, h: 160, w: 90 }, { x: 1500, h: 110, w: 100 },
-    { x: 1700, h: 140, w: 120 },{ x: 1880, h: 80, w: 90 },
-    { x: 2080, h: 155, w: 100 },{ x: 2260, h: 100, w: 110 },
-    { x: 2450, h: 130, w: 90 }, { x: 2640, h: 160, w: 100 },
-    { x: 2820, h: 90, w: 110 },
+    { x: 200,  h: 130, w: 110 },
+    { x: 500,  h: 100, w: 90  },
+    { x: 820,  h: 150, w: 100 },
+    { x: 1150, h: 110, w: 90  },
+    { x: 1480, h: 140, w: 110 },
+    { x: 1780, h: 100, w: 90  },
+    { x: 2100, h: 160, w: 100 },
+    { x: 2420, h: 120, w: 90  },
+    { x: 2720, h: 90,  w: 110 },
   ];
 
   platforms.forEach(({ x: bx, h: bh, w: bw }, i) => {
@@ -50,18 +63,33 @@ function genStage1() {
     for (let c = 0; c < coinCount; c++) {
       coinArr.push({ x: bx + 8 + c * 32, y: by - 30, col: false, ph: Math.random() * Math.PI * 2 });
     }
-    // よちよち敵（地面歩き）
-if (Math.random() > 0.4) {
-  enms.push({ x: bx + 30, y: by - 26, w: 26, h: 26, vx: -(0.4 + Math.random() * 0.3), vy: 0, alive: true, flying: true, spiky: false, type: 'yochi', knockvx: 0, knockvy: 0, platX: bx, platW: bw, baseY: by - 26 });
-}
-if (Math.random() > 0.6) {
-  enms.push({ x: bx + 30, y: by - 26, w: 26, h: 26, vx: -(0.4 + Math.random() * 0.3), vy: 0, alive: true, flying: true, spiky: false, type: 'yochi', knockvx: 0, knockvy: 0, platX: bx, platW: bw });
-}
 
+    // 浮き床の上のよちよち（platX/platWで端ギリギリまで往復）
+    if (Math.random() > 0.35) {
+      enms.push(makeYochi(bx + 10, by - 26, bx, bw));
+    }
+    if (Math.random() > 0.6) {
+      enms.push(makeYochi(bx + bw - 36, by - 26, bx, bw));
+    }
 
-    // ゴースト（空中浮遊・触ると痛い）
-    if (i % 4 === 1) {
-      enms.push({ x: bx + 20, y: by - 50, w: 36, h: 34, vx: -(0.5 + Math.random() * 0.3), vy: 0, alive: true, flying: true, spiky: true, type: 'ghost', knockvx: 0, knockvy: 0, floatPh: Math.random() * Math.PI * 2 });
+    // ふわゴースト
+    if (i % 3 === 1) {
+      enms.push({ x: bx + 10, y: by - 55, w: 34, h: 32, vx: -(0.4 + Math.random() * 0.25), vy: 0, alive: true, flying: true, spiky: false, type: 'fuwaghost', knockvx: 0, knockvy: 0, floatPh: Math.random() * Math.PI * 2 });
+    }
+  });
+
+  // 地面を歩くよちよち
+  // 穴を避けた地面の連続区間ごとに配置するゆ
+  const groundSegments = [
+    { x: 0,    w: 850  },  // 穴(900)の手前まで
+    { x: 1020, w: 940  },  // 穴(900+110)〜穴(2000)の手前まで
+    { x: 2120, w: 1000 },  // 穴(2000+110)〜ゴール手前まで
+  ];
+  groundSegments.forEach(seg => {
+    const count = Math.floor(seg.w / 280);
+    for (let n = 0; n < count; n++) {
+      const gndX = seg.x + 80 + n * 260 + Math.random() * 60;
+      enms.push(makeYochi(gndX, GND() - 26, seg.x, seg.w));
     }
   });
 
@@ -96,37 +124,62 @@ function genStage2() {
     for (let c = 0; c < coinCount; c++) {
       coinArr.push({ x: bx + 8 + c * 32, y: by - 30, col: false, ph: Math.random() * Math.PI * 2 });
     }
+    // スパイク：よちよちと同じ仕組みで浮き床上を歩く
     if (i % 3 === 2) {
-      enms.push({ x: bx + 20, y: by - 34, w: 30, h: 28, vx: -(1.6 + Math.random() * 0.4), vy: 0, alive: true, flying: false, spiky: true, type: 'spike', knockvx: 0, knockvy: 0 });
+      enms.push({
+        x: bx + bw * 0.3, y: by - 28,
+        w: 30, h: 28,
+        vx: -(1.6 + Math.random() * 0.4), vy: 0,
+        alive: true, flying: true, spiky: true, type: 'spike',
+        knockvx: 0, knockvy: 0,
+        platX: bx, platW: bw,
+        baseY: by - 28
+      });
     }
   });
 
-plats.push({ x: 1465, y: GND() - 110, w: 20, h: 60, t: 'checkpoint' });
+  plats.push({ x: 1465, y: GND() - 110, w: 20, h: 60, t: 'checkpoint' });
 }
 
 function genStage3() {
-  // 最初と最後だけ地面
   for (let x = -100; x < 400; x += 170) plats.push({ x, y: GND(), w: 190, h: WORLD_H, t: 'g' });
   for (let x = 2800; x < WLEN + 200; x += 170) plats.push({ x, y: GND(), w: 190, h: WORLD_H, t: 'g' });
   plats.push({ x: 1400, y: GND(), w: 200, h: WORLD_H, t: 'g' });
 
-  // ステップ敵（踏んで渡る一回限り足場）
-  const stepPositions = [500, 620, 750, 880, 1020, 1150, 1280, 1650, 1780, 1900, 2030, 2160, 2290, 2430, 2560, 2680];
-  stepPositions.forEach((sx, i) => {
-    const sy = GND() - 120 - Math.sin(i * 0.8) * 60;
-    enms.push({ x: sx, y: sy, w: 44, h: 22, vx: 0, vy: 0, alive: true, flying: true, spiky: false, type: 'step', knockvx: 0, knockvy: 0, floatPh: Math.random() * Math.PI * 2 });
-    coinArr.push({ x: sx + 10, y: sy - 30, col: false, ph: Math.random() * Math.PI * 2 });
+  const rng = (min, max) => min + Math.random() * (max - min);
+
+  const fuwaPositions = [];
+  let fx = 480;
+  while (fx < 1380) { fuwaPositions.push(fx + rng(-20, 30)); fx += rng(100, 160); }
+  fx = 1610;
+  while (fx < 2780) { fuwaPositions.push(fx + rng(-20, 30)); fx += rng(95, 165); }
+
+  fuwaPositions.forEach((fpx) => {
+    const heightOpts = [GND() - 80, GND() - 120, GND() - 160, GND() - 100, GND() - 200];
+    const fpy = heightOpts[Math.floor(Math.random() * heightOpts.length)] + rng(-25, 25);
+    const ph = Math.random() * Math.PI * 2;
+    enms.push({
+      x: fpx, y: fpy, w: 44, h: 32, vx: 0, vy: 0,
+      alive: true, flying: true, spiky: false, type: 'fuwaghost',
+      knockvx: 0, knockvy: 0, floatPh: ph,
+      initX: fpx, initY: fpy, initPh: ph, respawnable: true
+    });
+    coinArr.push({ x: fpx + 10, y: fpy - 30, col: false, ph: Math.random() * Math.PI * 2 });
   });
 
-  // 羽ウニ（上下動・触れると死）
-  const uniPositions = [570, 820, 960, 1210, 1720, 1980, 2100, 2500];
-  uniPositions.forEach((ux, i) => {
-    const uy = GND() - 150 - i * 10 % 80;
-    enms.push({ x: ux, y: uy, w: 30, h: 30, vx: 0, vy: 0, alive: true, flying: true, spiky: true, type: 'uni', knockvx: 0, knockvy: 0, floatPh: Math.random() * Math.PI * 2, floatRange: 60 + Math.random() * 40 });
+  [570, 820, 960, 1210, 1720, 1980, 2100, 2500].forEach((ux) => {
+    enms.push({
+      x: ux + rng(-30, 30), y: GND() - 140 - rng(0, 100),
+      w: 30, h: 30, vx: 0, vy: 0,
+      alive: true, flying: true, spiky: true, type: 'uni',
+      knockvx: 0, knockvy: 0,
+      floatPh: Math.random() * Math.PI * 2,
+      floatRange: 55 + Math.random() * 55
+    });
   });
 
   for (let i = 0; i < 20; i++) {
-    coinArr.push({ x: 400 + i * 120, y: GND() - 180 - Math.random() * 80, col: false, ph: Math.random() * Math.PI * 2 });
+    coinArr.push({ x: 400 + i * 115 + rng(-20, 20), y: GND() - 170 - rng(0, 100), col: false, ph: Math.random() * Math.PI * 2 });
   }
 
   plats.push({ x: 1400, y: GND() - 60, w: 20, h: 60, t: 'checkpoint' });
