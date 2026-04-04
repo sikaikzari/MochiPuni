@@ -58,7 +58,6 @@ if (Math.random() > 0.6) {
   enms.push({ x: bx + 30, y: by - 28, w: 26, h: 26, vx: -(0.4 + Math.random() * 0.3), vy: 0, alive: true, flying: false, spiky: false, type: 'yochi', knockvx: 0, knockvy: 0 });
 }
 
-}
     // ゴースト（空中浮遊・触ると痛い）
     if (i % 4 === 1) {
       enms.push({ x: bx + 20, y: by - 50, w: 36, h: 34, vx: -(0.5 + Math.random() * 0.3), vy: 0, alive: true, flying: true, spiky: true, type: 'ghost', knockvx: 0, knockvy: 0, floatPh: Math.random() * Math.PI * 2 });
