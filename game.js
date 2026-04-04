@@ -293,5 +293,4 @@ function loop() {
   requestAnimationFrame(loop);
 }
 
-genWorld(); if(typeof drawBG === 'function') drawBG();
-
+genWorld(); drawBG();

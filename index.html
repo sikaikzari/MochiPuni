@@ -114,7 +114,8 @@ async function loadScripts(){
     });
   }
 }
-loadScripts();
+loadScripts().then(()=>{ genWorld(); drawBG(); });
+
 </script>
 
 </body>
