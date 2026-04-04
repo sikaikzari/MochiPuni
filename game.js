@@ -85,7 +85,7 @@ function respawnFuwaghosts() {
       e.vx = 0; e.vy = 0;
       e.knockvx = 0; e.knockvy = 0;
       e.floatPh = e.initPh;
-      delete e.baseY; // baseYをリセットして再計算させる
+      delete e.baseY;
     }
   }
 }
@@ -106,7 +106,10 @@ function loseLife() {
     gState = 'over'; showOv('GAME OVER', `SCORE: ${score}<br>COIN: ${coins}<br><br>またがんばるゆ！`, '▶ TRY AGAIN');
   } else {
     const rx = safeRespawnX();
-    pl.x = rx; pl.y = GND() - PH - 10; pl.vx = 0; pl.vy = 0; pl.inv = 120;
+    const ry = (checkpoint && checkpoint.active && checkpoint.respawnY != null)
+      ? checkpoint.respawnY
+      : GND() - PH - 10;
+    pl.x = rx; pl.y = ry; pl.vx = 0; pl.vy = 0; pl.inv = 120;
     respawnFuwaghosts();
   }
 }
@@ -127,7 +130,6 @@ function startGame() {
   stopBGM(); sfxStart(); genWorld();
   document.getElementById('overlay').classList.add('hidden');
   gState = 'playing'; ui();
-  // 1面はBGMなし、2面以降から鳴る
   requestAnimationFrame(loop);
 }
 document.getElementById('startBtn').addEventListener('click', startGame);
@@ -151,12 +153,10 @@ function updateCamera() {
 // ===== platX/platW で端折り返し（よちよち・スパイク共通） =====
 function updatePlatWalker(e) {
   e.x += e.vx;
-  // 右端：スプライト右端が platX+platW を超えたら折り返し
   if (e.vx > 0 && e.x + e.w >= e.platX + e.platW) {
     e.x = e.platX + e.platW - e.w;
     e.vx = -Math.abs(e.vx);
   }
-  // 左端：スプライト左端が platX を下回ったら折り返し
   if (e.vx < 0 && e.x <= e.platX) {
     e.x = e.platX;
     e.vx = Math.abs(e.vx);
@@ -176,7 +176,11 @@ function update() {
   for (const p of plats) {
     if (!hit(pl.x, pl.y, pl.w, pl.h, p.x, p.y, p.w, p.h)) continue;
     if (p.t === 'checkpoint') {
-      if (!checkpoint.active) { checkpoint.active = true; checkpoint.x = p.x; }
+      if (!checkpoint.active) {
+        checkpoint.active = true;
+        checkpoint.x = p.x;
+        checkpoint.respawnY = p.respawnY != null ? p.respawnY : GND() - PH - 10;
+      }
       continue;
     }
     if (p.t === 'goal') {
@@ -219,15 +223,12 @@ function update() {
   for (const e of enms) {
     if (!e.alive) continue;
 
-    // 羽ウニ上下
     if (e.type === 'uni') {
       e.y = (e.baseY || (e.baseY = e.y)) + Math.sin((e.floatPh || 0) + frame * 0.025) * (e.floatRange || 50);
     }
-    // ふわゴーストふわふわ
     if (e.type === 'fuwaghost') {
       e.y = (e.baseY || (e.baseY = e.y)) + Math.sin((e.floatPh || 0) + frame * 0.05) * 6;
     }
-    // 赤目ゴーストふわふわ
     if (e.type === 'ghost') {
       e.y = (e.baseY || (e.baseY = e.y)) + Math.sin((e.floatPh || 0) + frame * 0.04) * 5;
     }
@@ -242,13 +243,10 @@ function update() {
       continue;
     }
 
-    // yochi・spike：platX/platW で端折り返し歩き
     if ((e.type === 'yochi' || e.type === 'spike') && e.platX !== undefined) {
       updatePlatWalker(e);
-      // yは固定（baseY）
       if (e.baseY !== undefined) e.y = e.baseY;
     }
-    // それ以外のflyingは水平移動のみ
     else if (e.flying) {
       if (e.type !== 'uni' && e.type !== 'fuwaghost' && e.type !== 'ghost') {
         e.x += e.vx; e.y += e.vy;
@@ -256,7 +254,6 @@ function update() {
         e.x += e.vx;
       }
     }
-    // flying:false は物理（2面スパイクの残骸対応、今後用）
     else {
       e.vy += 0.6;
       e.x += e.vx; e.y += e.vy;
@@ -276,12 +273,12 @@ function update() {
       if (e.y > WORLD_H + 60) e.alive = false;
     }
 
-    // ===== 踏み判定（無敵中でも通る） =====
+    // ===== 踏み判定 =====
     if (hit(pl.x, pl.y, pl.w, pl.h, e.x, e.y, e.w, e.h)) {
       const stomping = pl.vy > 0 && pl.y + pl.h < e.y + e.h * 0.75;
       if (e.type === 'fuwaghost') {
         if (stomping) {
-          e.alive = false; pl.vy = -12; score += 50;
+          e.alive = false; pl.vy = -12; pl.jumps = 2; score += 50;
           dieFx(e.x + 17, e.y + 10, '#aabbff'); sfxStomp(); ui();
         } else if (pl.inv <= 0) { loseLife(); return; }
       }
@@ -293,12 +290,12 @@ function update() {
       }
       else {
         if (stomping) {
-          e.alive = false; pl.vy = -12; score += 50; dieFx(e.x + 13, e.y + 13); sfxStomp(); ui();
+          e.alive = false; pl.vy = -12; pl.jumps = 2; score += 50; dieFx(e.x + 13, e.y + 13); sfxStomp(); ui();
         } else if (pl.inv <= 0) { loseLife(); return; }
       }
     }
 
-    // ===== キック判定（無敵中でも通る） =====
+    // ===== キック判定 =====
     if (pl.kick > 0) {
       const kx = pl.face > 0 ? pl.x + pl.w - 4 : pl.x - 12;
       if (hit(kx, pl.y + pl.h * 0.25, 16, pl.h * 0.55, e.x, e.y, e.w, e.h)) {

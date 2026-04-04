@@ -1,6 +1,7 @@
 // ===== Audio =====
 let audioCtx=null, bgmGain=null, bgmPlaying=false;
-let bgmVol=0.07, seVol=1.0, bgmOn=false;
+let bgmVol=0.07, seVol=1.0;
+let bgmScheduleId=null;
 function getAudio(){ if(!audioCtx) audioCtx=new(window.AudioContext||window.webkitAudioContext)(); return audioCtx; }
 function playTone(freq,type,dur,vol,startFreq){
   try{
@@ -13,11 +14,17 @@ function playTone(freq,type,dur,vol,startFreq){
     osc.start(ac.currentTime); osc.stop(ac.currentTime+dur);
   }catch(e){}
 }
-function sfxJump(){
-  if(seVol===0) return;
-  // ぽよん：低→高にピッチがふわっと上がるsine
-  playTone(640,'sine',0.25,0.08,200);
-  setTimeout(()=>playTone(820,'sine',0.18,0.05,500),55);
+function sfxJump(){ if(seVol===0) return;
+  try{
+    const ac=getAudio(), osc=ac.createOscillator(), g=ac.createGain();
+    osc.connect(g); g.connect(ac.destination);
+    osc.type='sine';
+    osc.frequency.setValueAtTime(280, ac.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(900, ac.currentTime+0.18);
+    g.gain.setValueAtTime(0.09*seVol, ac.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, ac.currentTime+0.28);
+    osc.start(ac.currentTime); osc.stop(ac.currentTime+0.28);
+  }catch(e){}
 }
 function sfxCoin(){ if(seVol===0) return; playTone(1200,'sine',0.08,0.15); setTimeout(()=>playTone(1600,'sine',0.1,0.12),50); setTimeout(()=>playTone(2000,'sine',0.12,0.1),110); }
 function sfxStomp(){ if(seVol===0) return; playTone(220,'sine',0.1,0.2,440); }
@@ -30,12 +37,11 @@ function setSEVol(v){ seVol=v; }
 function resumeAudio(){
   if(audioCtx) audioCtx.resume();
   stopBGM();
-  setTimeout(()=>{ if(bgmOn) startBGM(); },300);
+  setTimeout(()=>{ startBGM(); },300);
 }
 
-const BGM_NOTES=[[523,.25],[659,.25],[784,.25],[880,.25],[784,.25],[659,.25],[523,.25],[523,.5],[587,.25],[698,.25],[784,.25],[880,.5],[784,.25],[698,.25],[587,.25],[523,.5],[659,.25],[784,.25],[988,.25],[1047,.25],[988,.25],[784,.25],[659,.25],[659,.5],[523,.25],[659,.25],[784,.25],[1047,.5],[784,.5],[659,.25],[523,1.0]];
+const BGM_NOTES=[[523,.25],[659,.25],[784,.25],[880,.25],[784,.25],[659,.25],[523,.25],[523,.5],[587,.25],[698,.25],[784,.25],[880,.5],[784,.25],[698,.25],[587,.25],[523,.5],[659,.25],[784,.25],[988,.25],[1047,.25],[988,.25],[784,.25],[659,.25],[659,.5],[523,.25],[659,.25],[784,.25],[1047,.5],[784,.5],[659,.25],[523,1.0]]
 function startBGM(){
-  bgmOn=true;
   if(bgmPlaying) return;
   try{
     const ac=getAudio(); bgmGain=ac.createGain(); bgmGain.gain.value=bgmVol; bgmGain.connect(ac.destination); bgmPlaying=true; scheduleBGM(ac.currentTime);
@@ -58,6 +64,13 @@ function scheduleBGM(st){
     e.gain.setValueAtTime(0,bt); e.gain.linearRampToValueAtTime(0.4,bt+0.02); e.gain.linearRampToValueAtTime(0,bt+d*0.8);
     o.start(bt); o.stop(bt+d); bt+=bt+=d;
   });
-  if(bgmPlaying) setTimeout(()=>scheduleBGM(ac.currentTime),(total-0.5)*1000);
+  if(bgmPlaying){
+    if(bgmScheduleId) clearTimeout(bgmScheduleId);
+    bgmScheduleId=setTimeout(()=>scheduleBGM(ac.currentTime),(total-0.5)*1000);
+  }
 }
-function stopBGM(){ bgmOn=false; bgmPlaying=false; if(bgmGain){try{bgmGain.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.5);}catch(e){} bgmGain=null;} }
+function stopBGM(){
+  bgmPlaying=false;
+  if(bgmScheduleId){ clearTimeout(bgmScheduleId); bgmScheduleId=null; }
+  if(bgmGain){try{bgmGain.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.5);}catch(e){} bgmGain=null;}
+}
