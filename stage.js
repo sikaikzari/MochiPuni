@@ -51,9 +51,13 @@ function genStage1() {
       coinArr.push({ x: bx + 8 + c * 32, y: by - 30, col: false, ph: Math.random() * Math.PI * 2 });
     }
     // よちよち敵（地面歩き）
-    if (i % 3 === 0 || i % 3 === 1) {
+if (Math.random() > 0.4) {
   enms.push({ x: bx + 30, y: GND() - 28, w: 26, h: 26, vx: -(0.4 + Math.random() * 0.3), vy: 0, alive: true, flying: false, spiky: false, type: 'yochi', knockvx: 0, knockvy: 0 });
+}
+if (Math.random() > 0.6) {
   enms.push({ x: bx + 30, y: by - 28, w: 26, h: 26, vx: -(0.4 + Math.random() * 0.3), vy: 0, alive: true, flying: false, spiky: false, type: 'yochi', knockvx: 0, knockvy: 0 });
+}
+
 }
     // ゴースト（空中浮遊・触ると痛い）
     if (i % 4 === 1) {
