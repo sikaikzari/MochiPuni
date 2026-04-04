@@ -1,184 +1,325 @@
-// ===== ステージ設定 =====
-const WLEN = 3200;
-const WORLD_H = 800;
-const GND = () => WORLD_H - 36;
+// ===== スプライト読み込み =====
+const IMG = {};
+const SPRITE_NAMES = ['idle_r', 'idle_l', 'walk_r', 'walk_l'];
+let imgsLoaded = 0;
+SPRITE_NAMES.forEach(name => {
+  IMG[name] = new Image();
+  IMG[name].onload = () => imgsLoaded++;
+  IMG[name].src = `mochipuni_${name}.png`;
+});
 
-let checkpoint = { x: 80, active: false };
+// ===== Canvas =====
+const canvas = document.getElementById('gc'), ctx = canvas.getContext('2d');
+let W = 0, H = 0;
+function resize() {
+  const hudH = document.getElementById('hud').offsetHeight || 28;
+  const ctrlH = document.getElementById('controls').offsetHeight || 90;
+  H = window.innerHeight - hudH - ctrlH; W = window.innerWidth;
+  canvas.width = W; canvas.height = H;
+}
+resize(); window.addEventListener('resize', resize);
 
-function genWorld() {
-  plats = []; enms = []; coinArr = []; parts = [];
-  checkpoint = { x: 80, active: false };
+// ===== 入力 =====
+const inp = { left: false, right: false };
+function setupBtn(id, key) {
+  const el = document.getElementById(id);
+  el.addEventListener('touchstart', e => { e.preventDefault(); inp[key] = true; el.classList.add('pressed'); }, { passive: false });
+  el.addEventListener('touchend', e => { e.preventDefault(); inp[key] = false; el.classList.remove('pressed'); }, { passive: false });
+  el.addEventListener('touchcancel', e => { inp[key] = false; el.classList.remove('pressed'); }, { passive: false });
+}
+setupBtn('bL', 'left'); setupBtn('bR', 'right');
 
-  if (stage === 1) genStage1();
-  else if (stage === 2) genStage2();
-  else if (stage === 3) genStage3();
+const bJ = document.getElementById('bJ');
+bJ.addEventListener('touchstart', e => {
+  e.preventDefault(); bJ.classList.add('pressed');
+  if (gState === 'playing' && pl.jumps > 0) { pl.vy = -15; pl.jumps--; sfxJump(); }
+}, { passive: false });
+bJ.addEventListener('touchend', e => { e.preventDefault(); bJ.classList.remove('pressed'); }, { passive: false });
 
-  plats.push({ x: WLEN - 90, y: GND() - 110, w: 80, h: 110, t: 'goal' });
+const bK = document.getElementById('bK');
+bK.addEventListener('touchstart', e => {
+  e.preventDefault(); bK.classList.add('pressed');
+  if (gState === 'playing' && pl.kick <= 0) { pl.kick = 18; sfxKick(); }
+}, { passive: false });
+bK.addEventListener('touchend', e => { e.preventDefault(); bK.classList.remove('pressed'); }, { passive: false });
 
-  stars = [];
-  for (let i = 0; i < 200; i++) {
-    stars.push({ x: Math.random() * WLEN, y: Math.random() * (WORLD_H * 0.85), r: Math.random() * 1.8 + 0.3, ph: Math.random() * Math.PI * 2 });
+const keys = {};
+document.addEventListener('keydown', e => {
+  keys[e.code] = true;
+  if ((e.code === 'Space' || e.code === 'ArrowUp') && gState === 'playing') { e.preventDefault(); if (pl.jumps > 0) { pl.vy = -15; pl.jumps--; sfxJump(); } }
+  if (e.code === 'KeyZ' && gState === 'playing' && pl.kick <= 0) { pl.kick = 18; sfxKick(); }
+});
+document.addEventListener('keyup', e => keys[e.code] = false);
+
+// ===== ゲーム変数 =====
+let gState = 'menu', score = 0, coins = 0, lives = 3, frame = 0;
+let camX = 0, camY = 0;
+let stage = 1;
+const PW = 48, PH = 60;
+const pl = { x: 80, y: 0, w: PW, h: PH, vx: 0, vy: 0, ground: false, jumps: 2, face: 1, inv: 0, kick: 0, leg: 0 };
+let plats = [], enms = [], coinArr = [], parts = [], stars = [];
+
+// ===== パーティクル =====
+function coinFx(x, y) { for (let i = 0; i < 6; i++) parts.push({ x, y, vx: (Math.random() - .5) * 5, vy: -(Math.random() * 4 + 2), life: 22, ml: 22, col: '#ffd700', r: 3 }); }
+function dieFx(x, y, col = '#ff4455') { for (let i = 0; i < 10; i++) parts.push({ x, y, vx: (Math.random() - .5) * 7, vy: -(Math.random() * 5 + 2), life: 28, ml: 28, col, r: 4 }); }
+function kickFx(x, y) { for (let i = 0; i < 8; i++) parts.push({ x, y, vx: (Math.random() - .5) * 8, vy: -(Math.random() * 3 + 1), life: 20, ml: 20, col: '#ff9900', r: 3 }); }
+
+// ===== 安全なリスポーン位置 =====
+function safeRespawnX() {
+  if (checkpoint && checkpoint.active) return checkpoint.x;
+  const baseX = Math.max(camX + 40, 80);
+  for (let tx = baseX; tx < baseX + 400; tx += 20) {
+    const onGround = plats.some(p => p.t === 'g' && tx >= p.x && tx <= p.x + p.w);
+    if (onGround) return tx;
+  }
+  return 80;
+}
+
+// ===== 3面リスポーン：ふわゴースト復活 =====
+function respawnFuwaghosts() {
+  if (stage !== 3) return;
+  for (const e of enms) {
+    if (e.type === 'fuwaghost' && e.respawnable && !e.alive) {
+      e.alive = true;
+      e.x = e.initX; e.y = e.initY;
+      e.vx = 0; e.vy = 0;
+      e.knockvx = 0; e.knockvy = 0;
+      e.floatPh = e.initPh;
+      delete e.baseY;
+    }
   }
 }
 
-// よちよちを生成するヘルパー（浮き床上・地面上どちらでも使う）
-function makeYochi(x, y, platX, platW) {
-  return {
-    x, y, w: 26, h: 26,
-    vx: -(0.4 + Math.random() * 0.3), vy: 0,
-    alive: true, flying: true, spiky: false, type: 'yochi',
-    knockvx: 0, knockvy: 0,
-    platX, platW,
-    baseY: y
-  };
+// ===== UI =====
+function hit(ax, ay, aw, ah, bx, by, bw, bh) { return ax < bx + bw && ax + aw > bx && ay < by + bh && ay + ah > by; }
+function ui() { document.getElementById('sc').textContent = score; document.getElementById('co').textContent = coins; document.getElementById('li').textContent = lives; }
+function showBanner(t) { const b = document.getElementById('stage-banner'); b.textContent = t; b.style.opacity = 1; setTimeout(() => b.style.opacity = 0, 2000); }
+function showOv(title, desc, btn) {
+  stopBGM();
+  const ov = document.getElementById('overlay'); ov.classList.remove('hidden');
+  ov.querySelector('h1').innerHTML = title; ov.querySelector('p').innerHTML = desc; ov.querySelector('button').textContent = btn;
 }
 
-function genStage1() {
-  const holes = [900, 2000];
-  const holeW = 110;
-  let gx = -100;
-  while (gx < WLEN + 200) {
-    const isHole = holes.some(hx => gx + 190 > hx && gx < hx + holeW);
-    if (!isHole) plats.push({ x: gx, y: GND(), w: 190, h: WORLD_H, t: 'g' });
-    gx += 170;
+function loseLife() {
+  sfxDamage(); lives--; ui();
+  if (lives <= 0) {
+    gState = 'over'; showOv('GAME OVER', `SCORE: ${score}<br>COIN: ${coins}<br><br>またがんばるゆ！`, '▶ TRY AGAIN');
+  } else {
+    const rx = safeRespawnX();
+    const ry = (checkpoint && checkpoint.active && checkpoint.respawnY != null)
+      ? checkpoint.respawnY
+      : GND() - PH - 10;
+    pl.x = rx; pl.y = ry; pl.vx = 0; pl.vy = 0; pl.inv = 120;
+    respawnFuwaghosts();
+  }
+}
+
+function nextStage() {
+  stopBGM();
+  stage++; gState = 'playing';
+  pl.x = 80; pl.y = GND() - PH - 10; pl.vx = 0; pl.vy = 0; pl.ground = false; pl.jumps = 2; pl.inv = 0; pl.kick = 0;
+  camX = 0; camY = 0; genWorld(); showBanner(`STAGE ${stage}`);
+  setTimeout(() => { stopBGM(); startBGM(); }, 500);
+  requestAnimationFrame(loop);
+}
+
+function startGame() {
+  try { getAudio().resume(); } catch (e) { }
+  score = 0; coins = 0; lives = 3; frame = 0; camX = 0; camY = 0; stage = 1;
+  pl.x = 80; pl.y = GND() - PH - 10; pl.vx = 0; pl.vy = 0; pl.ground = false; pl.jumps = 2; pl.inv = 0; pl.kick = 0; pl.leg = 0;
+  stopBGM(); sfxStart(); genWorld();
+  document.getElementById('overlay').classList.add('hidden');
+  gState = 'playing'; ui();
+  requestAnimationFrame(loop);
+}
+document.getElementById('startBtn').addEventListener('click', startGame);
+document.getElementById('overlay').querySelector('button').addEventListener('click', startGame);
+
+// ===== カメラ =====
+function updateCamera() {
+  const tgtX = pl.x - W * 0.3;
+  camX += (tgtX - camX) * 0.12;
+  if (camX < 0) camX = 0;
+  const plScreenY = pl.y - camY;
+  const topMargin = H * 0.22;
+  const botMargin = H * 0.75;
+  let tgtY = camY;
+  if (plScreenY < topMargin) tgtY = pl.y - topMargin;
+  else if (plScreenY + PH > botMargin) tgtY = pl.y + PH - botMargin;
+  tgtY = Math.max(0, Math.min(tgtY, WORLD_H - H));
+  camY += (tgtY - camY) * 0.1;
+}
+
+// ===== platX/platW で端折り返し（よちよち・スパイク共通） =====
+function updatePlatWalker(e) {
+  e.x += e.vx;
+  if (e.vx > 0 && e.x + e.w >= e.platX + e.platW) {
+    e.x = e.platX + e.platW - e.w;
+    e.vx = -Math.abs(e.vx);
+  }
+  if (e.vx < 0 && e.x <= e.platX) {
+    e.x = e.platX;
+    e.vx = Math.abs(e.vx);
+  }
+}
+
+// ===== Update =====
+function update() {
+  frame++;
+  const ml = inp.left || keys['ArrowLeft'] || keys['KeyA'];
+  const mr = inp.right || keys['ArrowRight'] || keys['KeyD'];
+  if (ml) { pl.vx = -5; pl.face = -1; } else if (mr) { pl.vx = 5; pl.face = 1; } else pl.vx *= 0.75;
+  if (Math.abs(pl.vx) > 0.5) pl.leg += Math.abs(pl.vx) * 0.1;
+  pl.vy += 0.65; if (pl.vy > 20) pl.vy = 20;
+  pl.x += pl.vx; pl.y += pl.vy; pl.ground = false;
+
+  for (const p of plats) {
+    if (!hit(pl.x, pl.y, pl.w, pl.h, p.x, p.y, p.w, p.h)) continue;
+    if (p.t === 'checkpoint') {
+      if (!checkpoint.active) {
+        checkpoint.active = true;
+        checkpoint.x = p.x;
+        checkpoint.respawnY = p.respawnY != null ? p.respawnY : GND() - PH - 10;
+      }
+      continue;
+    }
+    if (p.t === 'goal') {
+      const tx = p.x + p.w / 2 - 6;
+      if (hit(pl.x, pl.y, pl.w, pl.h, tx, p.y, 12, p.h)) {
+        if (stage < 3) {
+          gState = 'transit';
+          const msgs = ['', 'ステージ2へ行くゆ〜！🥹', 'ステージ3へ行くゆ〜！🥹'];
+          showOv(`STAGE ${stage} CLEAR! 🎉`, `SCORE: ${score}<br>COIN: ${coins}<br><br>${msgs[stage]}`, '▶ NEXT STAGE!');
+          const btn = document.getElementById('overlay').querySelector('button');
+          btn.removeEventListener('click', startGame);
+          btn.addEventListener('click', () => { document.getElementById('overlay').classList.add('hidden'); nextStage(); }, { once: true });
+          btn.addEventListener('click', () => btn.addEventListener('click', startGame), { once: true });
+        } else {
+          gState = 'over';
+          showOv('ALL CLEAR!! 🏆', `TOTAL: ${score + coins * 10}<br>COIN: ${coins}<br><br>すごいゆ〜！🥹🥹`, '▶ PLAY AGAIN');
+        }
+        return;
+      }
+      const ox2 = Math.min(pl.x + pl.w, p.x + p.w) - Math.max(pl.x, p.x);
+      const oy2 = Math.min(pl.y + pl.h, p.y + p.h) - Math.max(pl.y, p.y);
+      if (ox2 < oy2) { pl.vx = 0; pl.x += pl.x < p.x ? -ox2 : ox2; }
+      else if (pl.vy > 0 && pl.y + pl.h - pl.vy <= p.y + 4) { pl.y = p.y - pl.h; pl.vy = 0; pl.ground = true; pl.jumps = 2; }
+      continue;
+    }
+    const ox = Math.min(pl.x + pl.w, p.x + p.w) - Math.max(pl.x, p.x);
+    const oy = Math.min(pl.y + pl.h, p.y + p.h) - Math.max(pl.y, p.y);
+    if (ox < oy) { pl.vx = 0; pl.x += pl.x < p.x ? -ox : ox; }
+    else {
+      if (pl.vy > 0 && pl.y + pl.h - pl.vy <= p.y + 4) { pl.y = p.y - pl.h; pl.vy = 0; pl.ground = true; pl.jumps = 2; }
+      else if (pl.vy < 0) { pl.y = p.y + p.h; pl.vy = 0; }
+    }
+  }
+  if (pl.y > WORLD_H + 100) { loseLife(); return; }
+
+  for (const c of coinArr) {
+    if (!c.col && hit(pl.x, pl.y, pl.w, pl.h, c.x, c.y, 22, 22)) { c.col = true; coins++; score += 10; coinFx(c.x + 11, c.y); sfxCoin(); ui(); }
   }
 
-  // 浮き床9個
-  const platforms = [
-    { x: 200,  h: 130, w: 110 },
-    { x: 500,  h: 100, w: 90  },
-    { x: 820,  h: 150, w: 100 },
-    { x: 1150, h: 110, w: 90  },
-    { x: 1480, h: 140, w: 110 },
-    { x: 1780, h: 100, w: 90  },
-    { x: 2100, h: 160, w: 100 },
-    { x: 2420, h: 120, w: 90  },
-    { x: 2720, h: 90,  w: 110 },
-  ];
+  for (const e of enms) {
+    if (!e.alive) continue;
 
-  platforms.forEach(({ x: bx, h: bh, w: bw }, i) => {
-    const by = GND() - bh;
-    plats.push({ x: bx, y: by, w: bw, h: 16, t: 'b' });
-    const coinCount = Math.floor(bw / 35);
-    for (let c = 0; c < coinCount; c++) {
-      coinArr.push({ x: bx + 8 + c * 32, y: by - 30, col: false, ph: Math.random() * Math.PI * 2 });
+    if (e.type === 'uni') {
+      e.y = (e.baseY || (e.baseY = e.y)) + Math.sin((e.floatPh || 0) + frame * 0.025) * (e.floatRange || 50);
+    }
+    if (e.type === 'fuwaghost') {
+      e.y = (e.baseY || (e.baseY = e.y)) + Math.sin((e.floatPh || 0) + frame * 0.05) * 6;
+    }
+    if (e.type === 'ghost') {
+      e.y = (e.baseY || (e.baseY = e.y)) + Math.sin((e.floatPh || 0) + frame * 0.04) * 5;
     }
 
-    if (Math.random() > 0.3) {
-      const startX = bx + Math.floor(bw / 2) - 13;
-      enms.push(makeYochi(startX, by - 30, bx, bw));
+    if (e.knockvx !== 0 || e.knockvy !== 0) {
+      e.x += e.knockvx; e.y += e.knockvy; e.knockvy += 0.7;
+      for (const e2 of enms) {
+        if (!e2.alive || e2 === e) continue;
+        if (hit(e.x, e.y, e.w, e.h, e2.x, e2.y, e2.w, e2.h)) { e2.alive = false; score += 80; dieFx(e2.x + 15, e2.y + 14, '#aa44ff'); sfxChain(); ui(); }
+      }
+      if (e.y > WORLD_H + 60 || e.x < -200 || e.x > WLEN + 200) e.alive = false;
+      continue;
     }
 
-    // ふわゴースト（よちよちサイズ、1面用）
-    if (i % 3 === 1) {
-      enms.push({ x: bx + 10, y: by - 55, w: 26, h: 26, vx: -(0.4 + Math.random() * 0.25), vy: 0, alive: true, flying: true, spiky: false, type: 'fuwaghost', knockvx: 0, knockvy: 0, floatPh: Math.random() * Math.PI * 2 });
+    if ((e.type === 'yochi' || e.type === 'spike') && e.platX !== undefined) {
+      updatePlatWalker(e);
+      if (e.baseY !== undefined) e.y = e.baseY;
     }
-  });
-
-  // 地面を歩くよちよち：各個体が自分のいるタイル範囲内だけ歩く
-  const gndRanges = [
-    { left: 200,  right: 770  },  // スタート〜穴1前タイル右端(580+190)
-    { left: 1090, right: 1960 },  // 穴1後タイル左端(1090)〜穴2前タイル右端(1770+190)
-    { left: 2110, right: 3150 },  // 穴2後タイル左端(2110)〜ゴール手前
-  ];
-  gndRanges.forEach(({ left, right }) => {
-    const rangeW = right - left;
-    const count = Math.max(1, Math.floor(rangeW / 300));
-    for (let n = 0; n < count; n++) {
-      const gndX = left + 40 + n * Math.floor(rangeW / count) + Math.random() * 60;
-      if (gndX + 26 > right) continue;
-      enms.push(makeYochi(gndX, GND() - 26, left, rangeW));
+    else if (e.flying) {
+      if (e.type !== 'uni' && e.type !== 'fuwaghost' && e.type !== 'ghost') {
+        e.x += e.vx; e.y += e.vy;
+      } else {
+        e.x += e.vx;
+      }
     }
-  });
+    else {
+      e.vy += 0.6;
+      e.x += e.vx; e.y += e.vy;
+      let onPlat = false;
+      for (const p of plats) {
+        if (p.t === 'goal' || p.t === 'checkpoint') continue;
+        if (!hit(e.x, e.y, e.w, e.h, p.x, p.y, p.w, p.h)) continue;
+        const ox = Math.min(e.x + e.w, p.x + p.w) - Math.max(e.x, p.x);
+        const oy = Math.min(e.y + e.h, p.y + p.h) - Math.max(e.y, p.y);
+        if (ox < oy) e.vx *= -1;
+        else { e.y = p.y - e.h; e.vy = 0; onPlat = true; }
+      }
+      if (onPlat) {
+        const ahead = e.x + (e.vx > 0 ? e.w + 2 : -2);
+        if (!plats.some(p => p.t === 'g' && ahead >= p.x && ahead <= p.x + p.w)) e.vx *= -1;
+      }
+      if (e.y > WORLD_H + 60) e.alive = false;
+    }
 
-  plats.push({ x: 1600, y: GND() - 60, w: 20, h: 60, t: 'checkpoint' });
-}
+    // ===== 踏み判定 =====
+    if (hit(pl.x, pl.y, pl.w, pl.h, e.x, e.y, e.w, e.h)) {
+      const stomping = pl.vy > 0 && pl.y + pl.h < e.y + e.h * 0.75;
+      if (e.type === 'fuwaghost') {
+        if (stomping) {
+          e.alive = false; pl.vy = -12; pl.jumps = 2; score += 50;
+          dieFx(e.x + 17, e.y + 10, '#aabbff'); sfxStomp(); ui();
+        } else if (pl.inv <= 0) { loseLife(); return; }
+      }
+      else if (e.type === 'ghost' || e.type === 'uni') {
+        if (pl.inv <= 0) { loseLife(); return; }
+      }
+      else if (e.spiky) {
+        if (pl.inv <= 0) { loseLife(); return; }
+      }
+      else {
+        if (stomping) {
+          e.alive = false; pl.vy = -12; pl.jumps = 2; score += 50; dieFx(e.x + 13, e.y + 13); sfxStomp(); ui();
+        } else if (pl.inv <= 0) { loseLife(); return; }
+      }
+    }
 
-function genStage2() {
-  const holes = [500, 800, 1300, 1700, 2100, 2600];
-  const holeW = 140;
-  let gx = -100;
-  while (gx < WLEN + 200) {
-    const isHole = holes.some(hx => gx + 190 > hx && gx < hx + holeW);
-    if (!isHole) plats.push({ x: gx, y: GND(), w: 190, h: WORLD_H, t: 'g' });
-    gx += 170;
+    // ===== キック判定 =====
+    if (pl.kick > 0) {
+      const kx = pl.face > 0 ? pl.x + pl.w - 4 : pl.x - 12;
+      if (hit(kx, pl.y + pl.h * 0.25, 16, pl.h * 0.55, e.x, e.y, e.w, e.h)) {
+        e.knockvx = pl.face * 13; e.knockvy = -7; e.vx = 0; e.vy = 0;
+        score += 100; kickFx(e.x + 15, e.y + 14); sfxKick(); ui();
+      }
+    }
   }
 
-  const platforms = [
-    { x: 150, h: 160, w: 100 }, { x: 360, h: 100, w: 80 },
-    { x: 530, h: 180, w: 110 }, { x: 720, h: 120, w: 90 },
-    { x: 900, h: 150, w: 100 }, { x: 1080, h: 90, w: 80 },
-    { x: 1260, h: 170, w: 110 },{ x: 1430, h: 110, w: 90 },
-    { x: 1620, h: 140, w: 100 },{ x: 1800, h: 80, w: 80 },
-    { x: 1980, h: 160, w: 110 },{ x: 2160, h: 100, w: 90 },
-    { x: 2340, h: 130, w: 100 },{ x: 2520, h: 170, w: 80 },
-    { x: 2700, h: 90, w: 110 }, { x: 2880, h: 120, w: 90 },
-  ];
-
-  platforms.forEach(({ x: bx, h: bh, w: bw }, i) => {
-    const by = GND() - bh;
-    plats.push({ x: bx, y: by, w: bw, h: 16, t: 'b' });
-    const coinCount = Math.floor(bw / 35);
-    for (let c = 0; c < coinCount; c++) {
-      coinArr.push({ x: bx + 8 + c * 32, y: by - 30, col: false, ph: Math.random() * Math.PI * 2 });
-    }
-    // スパイク：よちよちと同じ仕組みで浮き床上を歩く
-    if (i % 3 === 2) {
-      enms.push({
-        x: bx + bw * 0.3, y: by - 16,
-        w: 30, h: 28,
-        vx: -(1.6 + Math.random() * 0.4), vy: 0,
-        alive: true, flying: true, spiky: true, type: 'spike',
-        knockvx: 0, knockvy: 0,
-        platX: bx, platW: bw,
-        baseY: by - 16
-      });
-    }
-  });
-
-  plats.push({ x: 1465, y: GND() - 110 - 60, w: 20, h: 60, t: 'checkpoint' });
-}
-
-function genStage3() {
-  for (let x = -100; x < 400; x += 170) plats.push({ x, y: GND(), w: 190, h: WORLD_H, t: 'g' });
-  for (let x = 2800; x < WLEN + 200; x += 170) plats.push({ x, y: GND(), w: 190, h: WORLD_H, t: 'g' });
-  plats.push({ x: 1400, y: GND(), w: 200, h: WORLD_H, t: 'g' });
-
-  const rng = (min, max) => min + Math.random() * (max - min);
-
-  const fuwaPositions = [];
-  let fx = 480;
-  while (fx < 1380) { fuwaPositions.push(fx + rng(-20, 30)); fx += rng(100, 160); }
-  fx = 1610;
-  while (fx < 2780) { fuwaPositions.push(fx + rng(-20, 30)); fx += rng(95, 165); }
-
-  fuwaPositions.forEach((fpx) => {
-    const heightOpts = [GND() - 80, GND() - 120, GND() - 160, GND() - 100, GND() - 200];
-    const fpy = heightOpts[Math.floor(Math.random() * heightOpts.length)] + rng(-25, 25);
-    const ph = Math.random() * Math.PI * 2;
-    enms.push({
-      x: fpx, y: fpy, w: 44, h: 32, vx: 0, vy: 0,
-      alive: true, flying: true, spiky: false, type: 'fuwaghost',
-      knockvx: 0, knockvy: 0, floatPh: ph,
-      initX: fpx, initY: fpy, initPh: ph, respawnable: true
-    });
-    coinArr.push({ x: fpx + 10, y: fpy - 30, col: false, ph: Math.random() * Math.PI * 2 });
-  });
-
-  [570, 820, 960, 1210, 1720, 1980, 2100, 2500].forEach((ux) => {
-    enms.push({
-      x: ux + rng(-30, 30), y: GND() - 140 - rng(0, 100),
-      w: 30, h: 30, vx: 0, vy: 0,
-      alive: true, flying: true, spiky: true, type: 'uni',
-      knockvx: 0, knockvy: 0,
-      floatPh: Math.random() * Math.PI * 2,
-      floatRange: 55 + Math.random() * 55
-    });
-  });
-
-  for (let i = 0; i < 20; i++) {
-    coinArr.push({ x: 400 + i * 115 + rng(-20, 20), y: GND() - 170 - rng(0, 100), col: false, ph: Math.random() * Math.PI * 2 });
+  for (let i = parts.length - 1; i >= 0; i--) {
+    const p = parts[i]; p.x += p.vx; p.y += p.vy; p.vy += 0.15; p.life--;
+    if (p.life <= 0) parts.splice(i, 1);
   }
 
-  plats.push({ x: 1400, y: GND() - 60, w: 20, h: 60, t: 'checkpoint' });
+  if (pl.kick > 0) pl.kick--;
+  if (pl.inv > 0) pl.inv--;
+  score++; if (frame % 30 === 0) ui();
+  updateCamera();
 }
+
+function loop() {
+  if (gState !== 'playing') return;
+  update(); draw();
+  requestAnimationFrame(loop);
+}
+
+genWorld(); drawBG();
