@@ -112,11 +112,11 @@ function loseLife() {
 }
 
 function nextStage() {
+  stopBGM();
   stage++; gState = 'playing';
   pl.x = 80; pl.y = GND() - PH - 10; pl.vx = 0; pl.vy = 0; pl.ground = false; pl.jumps = 2; pl.inv = 0; pl.kick = 0;
   camX = 0; camY = 0; genWorld(); showBanner(`STAGE ${stage}`);
-  stopBGM();
-  setTimeout(() => startBGM(), 300);
+  setTimeout(() => { stopBGM(); startBGM(); }, 500);
   requestAnimationFrame(loop);
 }
 

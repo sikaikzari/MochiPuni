@@ -77,14 +77,10 @@ function genStage1() {
   });
 
   // 地面を歩くよちよち：各個体が自分のいるタイル範囲内だけ歩く
-  // 穴の位置を考慮して、各よちよちのいる連続地面区間の端を折り返し点にする
-  const holes = [900, 2000];
-  const holeW = 110;
-  // 連続地面区間を正確に計算（タイル単位ではなく穴座標ベース）
   const gndRanges = [
-    { left: 200,  right: holes[0] - 30   },  // 開幕安全地帯後〜穴1手前
-    { left: holes[0] + holeW + 10, right: holes[1] - 30   },  // 穴1後〜穴2手前
-    { left: holes[1] + holeW + 10, right: WLEN - 150 },  // 穴2後〜ゴール手前
+    { left: 200,  right: 870  },  // 開幕安全地帯後〜穴1(900)手前
+    { left: 1020, right: 1970 },  // 穴1後〜穴2(2000)手前
+    { left: 2120, right: 3050 },  // 穴2後〜ゴール手前
   ];
   gndRanges.forEach(({ left, right }) => {
     const rangeW = right - left;
@@ -92,7 +88,6 @@ function genStage1() {
     for (let n = 0; n < count; n++) {
       const gndX = left + 40 + n * Math.floor(rangeW / count) + Math.random() * 60;
       if (gndX + 26 > right) continue;
-      // platX/platWにその区間の左右端を渡す
       enms.push(makeYochi(gndX, GND() - 26, left, right - left));
     }
   });
@@ -131,18 +126,18 @@ function genStage2() {
     // スパイク：よちよちと同じ仕組みで浮き床上を歩く
     if (i % 3 === 2) {
       enms.push({
-        x: bx + bw * 0.3, y: by - 28,
+        x: bx + bw * 0.3, y: by - 16,
         w: 30, h: 28,
         vx: -(1.6 + Math.random() * 0.4), vy: 0,
         alive: true, flying: true, spiky: true, type: 'spike',
         knockvx: 0, knockvy: 0,
         platX: bx, platW: bw,
-        baseY: by - 28
+        baseY: by - 16
       });
     }
   });
 
-  plats.push({ x: 1465, y: GND() - 110, w: 20, h: 60, t: 'checkpoint' });
+  plats.push({ x: 1465, y: GND() - 110 - 60, w: 20, h: 60, t: 'checkpoint' });
 }
 
 function genStage3() {
