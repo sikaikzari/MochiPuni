@@ -151,46 +151,48 @@ function drawEnm(e) {
     ctx.beginPath(); ctx.arc(0, -5, 28, 0.3, Math.PI - 0.3); ctx.stroke();
   }
 
-  // ===== ふわゴースト（踏んで倒せる・ゴースト形状・真顔） =====
+  // ===== ふわゴースト（踏んで倒せる・ゴースト形状・ちょいニヤリ） =====
   else if (e.type === 'fuwaghost') {
     ctx.translate(sx + e.w / 2, sy + e.h / 2);
     if (e.vx > 0) ctx.scale(-1, 1);
     const floatY = Math.sin((e.floatPh || 0) + frame * 0.05) * 4;
     ctx.translate(0, floatY);
-    // ゴースト体（上半円＋波々裾）・不透明
+    // 体：上半円＋丸い足3つ
     const fg = ctx.createRadialGradient(-2, -6, 1, 0, -4, 14);
     fg.addColorStop(0, '#dde8ff'); fg.addColorStop(1, '#7788cc');
     ctx.fillStyle = fg;
     ctx.beginPath();
-    ctx.arc(0, -4, 13, Math.PI, 0); // 上半円
-    ctx.lineTo(13, 8);
-    // 波々裾（3つの山）
-    ctx.quadraticCurveTo(9, 14, 5, 8);
-    ctx.quadraticCurveTo(1, 2, -3, 8);
-    ctx.quadraticCurveTo(-7, 14, -13, 8);
-    ctx.lineTo(-13, 8);
+    ctx.arc(0, -4, 13, Math.PI, 0);  // 上半円
+    ctx.lineTo(13, 7);
+    // 右足（丸）
+    ctx.arc(9, 7, 4.5, 0, Math.PI);
+    // 中足（丸）
+    ctx.arc(0, 7, 4.5, 0, Math.PI);
+    // 左足（丸）
+    ctx.arc(-9, 7, 4.5, 0, Math.PI);
+    ctx.lineTo(-13, 7);
     ctx.closePath();
     ctx.fill();
     ctx.strokeStyle = '#5566aa'; ctx.lineWidth = 1.5;
     ctx.beginPath();
     ctx.arc(0, -4, 13, Math.PI, 0);
-    ctx.lineTo(13, 8);
-    ctx.quadraticCurveTo(9, 14, 5, 8);
-    ctx.quadraticCurveTo(1, 2, -3, 8);
-    ctx.quadraticCurveTo(-7, 14, -13, 8);
-    ctx.lineTo(-13, 8);
+    ctx.lineTo(13, 7);
+    ctx.arc(9, 7, 4.5, 0, Math.PI);
+    ctx.arc(0, 7, 4.5, 0, Math.PI);
+    ctx.arc(-9, 7, 4.5, 0, Math.PI);
+    ctx.lineTo(-13, 7);
     ctx.closePath();
     ctx.stroke();
-    // 目（真顔・まん丸）
+    // 目（まん丸）
     ctx.fillStyle = '#223355';
     ctx.beginPath(); ctx.arc(-4.5, -5, 3, 0, Math.PI * 2); ctx.fill();
     ctx.beginPath(); ctx.arc(4.5, -5, 3, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#aabbff';
     ctx.beginPath(); ctx.arc(-5.5, -6, 1, 0, Math.PI * 2); ctx.fill();
     ctx.beginPath(); ctx.arc(3.5, -6, 1, 0, Math.PI * 2); ctx.fill();
-    // 真顔の口（一文字）
+    // ちょいニヤリ口
     ctx.strokeStyle = '#334466'; ctx.lineWidth = 1.5; ctx.lineCap = 'round';
-    ctx.beginPath(); ctx.moveTo(-4, 2); ctx.lineTo(4, 2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(1, 0, 4, -0.2, Math.PI * 0.75); ctx.stroke();
   }
 
   // ===== ステップ敵（踏んで渡る足場） =====

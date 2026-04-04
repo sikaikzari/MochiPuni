@@ -76,20 +76,24 @@ function genStage1() {
     }
   });
 
-  // 地面を歩くよちよち：穴をまたがないよう区間を正確に定義し、開幕200px以降のみ配置
-  const groundSegments = [
-    { x: 200,  w: 680  },  // 開幕安全地帯の後〜穴(900)の手前まで
-    { x: 1020, w: 940  },  // 穴(900+110)〜穴(2000)の手前まで
-    { x: 2120, w: 950  },  // 穴(2000+110)〜ゴール手前まで
+  // 地面を歩くよちよち：各個体が自分のいるタイル範囲内だけ歩く
+  // 穴の位置を考慮して、各よちよちのいる連続地面区間の端を折り返し点にする
+  const holes = [900, 2000];
+  const holeW = 110;
+  // 連続地面区間を正確に計算（タイル単位ではなく穴座標ベース）
+  const gndRanges = [
+    { left: 200,  right: holes[0] - 30   },  // 開幕安全地帯後〜穴1手前
+    { left: holes[0] + holeW + 10, right: holes[1] - 30   },  // 穴1後〜穴2手前
+    { left: holes[1] + holeW + 10, right: WLEN - 150 },  // 穴2後〜ゴール手前
   ];
-  groundSegments.forEach(seg => {
-    const count = Math.floor(seg.w / 300);
+  gndRanges.forEach(({ left, right }) => {
+    const rangeW = right - left;
+    const count = Math.max(1, Math.floor(rangeW / 300));
     for (let n = 0; n < count; n++) {
-      // 区間内にランダム配置するが、端から50px以上内側に置く
-      const gndX = seg.x + 50 + n * 270 + Math.random() * 50;
-      // 区間の右端からはみ出さないようにチェック
-      if (gndX + 26 > seg.x + seg.w - 30) continue;
-      enms.push(makeYochi(gndX, GND() - 26, seg.x, seg.w));
+      const gndX = left + 40 + n * Math.floor(rangeW / count) + Math.random() * 60;
+      if (gndX + 26 > right) continue;
+      // platX/platWにその区間の左右端を渡す
+      enms.push(makeYochi(gndX, GND() - 26, left, right - left));
     }
   });
 
