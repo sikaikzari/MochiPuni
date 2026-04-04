@@ -78,16 +78,15 @@
   }
   #menu-panel.hidden{opacity:0;pointer-events:none;transform:translateY(-8px);}
   .menu-row{display:flex;align-items:center;justify-content:space-between;gap:12px;white-space:nowrap;}
-  .toggle {
-    width:38px;height:20px;border-radius:10px;background:#333;position:relative;
-    cursor:pointer;border:1px solid #555;flex-shrink:0;transition:background 0.2s;
+  .menu-slider{
+    -webkit-appearance:none;appearance:none;
+    width:90px;height:6px;border-radius:3px;
+    background:#333;outline:none;cursor:pointer;
   }
-  .toggle.on{background:#5c35cc;}
-  .toggle::after{
-    content:'';position:absolute;top:2px;left:2px;width:14px;height:14px;
-    border-radius:50%;background:white;transition:left 0.2s;
+  .menu-slider::-webkit-slider-thumb{
+    -webkit-appearance:none;width:18px;height:18px;border-radius:50%;
+    background:#5c35cc;border:2px solid #fff;cursor:pointer;
   }
-  .toggle.on::after{left:20px;}
   .menu-reload{
     width:100%;padding:6px 0;background:#3d1f99;border:none;border-radius:6px;
     color:white;font-family:'Press Start 2P',monospace;font-size:7px;cursor:pointer;
@@ -124,11 +123,11 @@
 <div id="menu-panel" class="hidden">
   <div class="menu-row">
     <span>BGM</span>
-    <div class="toggle on" id="tog-bgm" onclick="toggleBGM(this)"></div>
+    <input class="menu-slider" type="range" min="0" max="100" value="70" oninput="setBGMVol(this.value/1000)">
   </div>
   <div class="menu-row">
     <span>SE</span>
-    <div class="toggle on" id="tog-se" onclick="toggleSE(this)"></div>
+    <input class="menu-slider" type="range" min="0" max="100" value="100" oninput="setSEVol(this.value/100)">
   </div>
   <button class="menu-reload" onclick="resumeAudio()">🔊 音リロード</button>
 </div>
@@ -147,40 +146,18 @@
 
 <script>
 let menuOpen = false;
-let bgmOn = true, seOn = true;
 
 function toggleMenu() {
   menuOpen = !menuOpen;
   document.getElementById('menu-panel').classList.toggle('hidden', !menuOpen);
-  if (typeof gState !== 'undefined') {
-    if (menuOpen && gState === 'playing') {
-      gState = 'paused';
-    } else if (!menuOpen && gState === 'paused') {
-      gState = 'playing';
-      requestAnimationFrame(loop);
-    }
-  }
 }
 document.addEventListener('touchstart', e => {
   if (menuOpen && !e.target.closest('#menu-btn') && !e.target.closest('#menu-panel')) {
     menuOpen = false;
     document.getElementById('menu-panel').classList.add('hidden');
-    if (typeof gState !== 'undefined' && gState === 'paused') {
-      gState = 'playing';
-      requestAnimationFrame(loop);
-    }
   }
 }, { passive: true });
 
-function toggleBGM(el) {
-  bgmOn = !bgmOn;
-  el.classList.toggle('on', bgmOn);
-  if (bgmOn) startBGM(); else stopBGM();
-}
-function toggleSE(el) {
-  seOn = !seOn;
-  el.classList.toggle('on', seOn);
-}
 
 async function loadScripts(){
   const files = ['bgm.js','stage.js','draw.js','game.js'];

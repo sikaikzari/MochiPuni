@@ -64,10 +64,9 @@ function genStage1() {
       coinArr.push({ x: bx + 8 + c * 32, y: by - 30, col: false, ph: Math.random() * Math.PI * 2 });
     }
 
-    // 浮き床の上のよちよち：1床につき最大1体、中央付近に固定配置
     if (Math.random() > 0.3) {
       const startX = bx + Math.floor(bw / 2) - 13;
-      enms.push(makeYochi(startX, by - 26, bx, bw));
+      enms.push(makeYochi(startX, by - 30, bx, bw));
     }
 
     // ふわゴースト（よちよちサイズ、1面用）
@@ -88,7 +87,7 @@ function genStage1() {
     for (let n = 0; n < count; n++) {
       const gndX = left + 40 + n * Math.floor(rangeW / count) + Math.random() * 60;
       if (gndX + 26 > right) continue;
-      enms.push(makeYochi(gndX, GND() - 26, left, right - left));
+      enms.push(makeYochi(gndX, GND() - 30, left, right - left));
     }
   });
 
