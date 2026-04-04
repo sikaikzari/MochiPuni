@@ -64,31 +64,31 @@ function genStage1() {
       coinArr.push({ x: bx + 8 + c * 32, y: by - 30, col: false, ph: Math.random() * Math.PI * 2 });
     }
 
-    // 浮き床の上のよちよち（platX/platWで端ギリギリまで往復）
-    if (Math.random() > 0.35) {
-      enms.push(makeYochi(bx + 10, by - 26, bx, bw));
-    }
-    if (Math.random() > 0.6) {
-      enms.push(makeYochi(bx + bw - 36, by - 26, bx, bw));
+    // 浮き床の上のよちよち：1床につき最大1体
+    if (Math.random() > 0.3) {
+      const startX = bx + Math.floor(Math.random() * Math.max(1, bw - 26));
+      enms.push(makeYochi(startX, by - 26, bx, bw));
     }
 
-    // ふわゴースト
+    // ふわゴースト（よちよちサイズ、1面用）
     if (i % 3 === 1) {
-      enms.push({ x: bx + 10, y: by - 55, w: 34, h: 32, vx: -(0.4 + Math.random() * 0.25), vy: 0, alive: true, flying: true, spiky: false, type: 'fuwaghost', knockvx: 0, knockvy: 0, floatPh: Math.random() * Math.PI * 2 });
+      enms.push({ x: bx + 10, y: by - 55, w: 26, h: 26, vx: -(0.4 + Math.random() * 0.25), vy: 0, alive: true, flying: true, spiky: false, type: 'fuwaghost', knockvx: 0, knockvy: 0, floatPh: Math.random() * Math.PI * 2 });
     }
   });
 
-  // 地面を歩くよちよち
-  // 穴を避けた地面の連続区間ごとに配置するゆ
+  // 地面を歩くよちよち：穴をまたがないよう区間を正確に定義し、開幕200px以降のみ配置
   const groundSegments = [
-    { x: 0,    w: 850  },  // 穴(900)の手前まで
+    { x: 200,  w: 680  },  // 開幕安全地帯の後〜穴(900)の手前まで
     { x: 1020, w: 940  },  // 穴(900+110)〜穴(2000)の手前まで
-    { x: 2120, w: 1000 },  // 穴(2000+110)〜ゴール手前まで
+    { x: 2120, w: 950  },  // 穴(2000+110)〜ゴール手前まで
   ];
   groundSegments.forEach(seg => {
-    const count = Math.floor(seg.w / 280);
+    const count = Math.floor(seg.w / 300);
     for (let n = 0; n < count; n++) {
-      const gndX = seg.x + 80 + n * 260 + Math.random() * 60;
+      // 区間内にランダム配置するが、端から50px以上内側に置く
+      const gndX = seg.x + 50 + n * 270 + Math.random() * 50;
+      // 区間の右端からはみ出さないようにチェック
+      if (gndX + 26 > seg.x + seg.w - 30) continue;
       enms.push(makeYochi(gndX, GND() - 26, seg.x, seg.w));
     }
   });

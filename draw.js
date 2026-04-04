@@ -114,64 +114,76 @@ function drawEnm(e) {
     ctx.beginPath(); ctx.ellipse(4, bob + 10 - legSwing * 0.3, 3.5, 4, -legSwing * 0.05, 0, Math.PI * 2); ctx.fill();
   }
 
-  // ===== 赤目ゴースト（触ると即死・大きめ） =====
+  // ===== 赤目ゴースト（触ると即死・超でかい） =====
   else if (e.type === 'ghost') {
     ctx.translate(sx + e.w / 2, sy + e.h / 2);
     if (e.vx > 0) ctx.scale(-1, 1);
-    const floatY = Math.sin((e.floatPh || 0) + frame * 0.04) * 5;
+    const floatY = Math.sin((e.floatPh || 0) + frame * 0.04) * 12;
     ctx.translate(0, floatY);
-    ctx.globalAlpha = 0.68 + Math.sin(frame * 0.04) * 0.1;
-    // 体（大きく：radius 22→28）
-    const gg = ctx.createRadialGradient(0, -5, 3, 0, 0, 26);
-    gg.addColorStop(0, '#eeeeff'); gg.addColorStop(0.6, '#99aadd'); gg.addColorStop(1, 'rgba(80,100,200,0)');
+    // 背後にぼんやり光るオーラ
+    const aura = ctx.createRadialGradient(0, -10, 20, 0, -10, 130);
+    aura.addColorStop(0, 'rgba(80,0,120,0.22)'); aura.addColorStop(1, 'rgba(80,0,120,0)');
+    ctx.fillStyle = aura; ctx.beginPath(); ctx.arc(0, -10, 130, 0, Math.PI * 2); ctx.fill();
+    // 体（radius 110）
+    const gg = ctx.createRadialGradient(0, -25, 8, 0, -10, 110);
+    gg.addColorStop(0, '#dde0ff'); gg.addColorStop(0.5, '#7788cc'); gg.addColorStop(1, 'rgba(40,50,160,0.85)');
     ctx.fillStyle = gg;
-    ctx.beginPath(); ctx.arc(0, -6, 22, Math.PI, 0);
-    ctx.lineTo(22, 10);
-    for (let gx = 22; gx >= -22; gx -= 11) ctx.lineTo(gx - 5, gx % 22 === 0 ? 2 : 14);
+    ctx.beginPath(); ctx.arc(0, -25, 110, Math.PI, 0);
+    ctx.lineTo(110, 60);
+    for (let gx = 110; gx >= -110; gx -= 44) ctx.lineTo(gx - 20, gx % 110 === 0 ? 20 : 70);
     ctx.closePath(); ctx.fill();
-    ctx.globalAlpha = 1;
-    // 赤目（大きく）
-    ctx.fillStyle = '#2a3a5a';
-    ctx.beginPath(); ctx.ellipse(-7, -9, 4.5, 5.5, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(7, -9, 4.5, 5.5, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = 'rgba(255,60,60,0.95)';
-    ctx.beginPath(); ctx.arc(-7, -9, 3, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.arc(7, -9, 3, 0, Math.PI * 2); ctx.fill();
-    // 光の点
-    ctx.fillStyle = 'rgba(255,200,200,0.9)';
-    ctx.beginPath(); ctx.arc(-8.5, -10.5, 1.2, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.arc(5.5, -10.5, 1.2, 0, Math.PI * 2); ctx.fill();
+    // 縁取り
+    ctx.strokeStyle = 'rgba(120,140,255,0.5)'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(0, -25, 110, Math.PI, 0); ctx.stroke();
+    // 赤目（でかい）
+    ctx.fillStyle = '#1a2040';
+    ctx.beginPath(); ctx.ellipse(-38, -40, 22, 27, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(38, -40, 22, 27, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,30,30,0.95)';
+    ctx.beginPath(); ctx.arc(-38, -40, 16, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(38, -40, 16, 0, Math.PI * 2); ctx.fill();
+    // 瞳の光
+    ctx.fillStyle = 'rgba(255,180,180,0.95)';
+    ctx.beginPath(); ctx.arc(-45, -48, 6, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(31, -48, 6, 0, Math.PI * 2); ctx.fill();
+    // 不気味な口
+    ctx.strokeStyle = 'rgba(80,20,60,0.9)'; ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.arc(0, -5, 28, 0.3, Math.PI - 0.3); ctx.stroke();
   }
 
-  // ===== ふわゴースト（踏んで倒せる・3面用） =====
+  // ===== ふわゴースト（踏んで倒せる・よちよちサイズ・透過なし） =====
   else if (e.type === 'fuwaghost') {
     ctx.translate(sx + e.w / 2, sy + e.h / 2);
     if (e.vx > 0) ctx.scale(-1, 1);
-    const floatY = Math.sin((e.floatPh || 0) + frame * 0.05) * 6;
+    const floatY = Math.sin((e.floatPh || 0) + frame * 0.05) * 4;
     ctx.translate(0, floatY);
-    ctx.globalAlpha = 0.55 + Math.sin(frame * 0.06) * 0.12;
-    // 体（丸っこく・パステル）
-    const fg = ctx.createRadialGradient(0, -3, 2, 0, 0, 18);
-    fg.addColorStop(0, '#ffffff'); fg.addColorStop(0.5, '#ccddff'); fg.addColorStop(1, 'rgba(160,190,255,0)');
+    // 体（よちよちと同等サイズ radius 13）・不透明
+    const fg = ctx.createRadialGradient(-2, -5, 1, 0, -2, 13);
+    fg.addColorStop(0, '#ffffff'); fg.addColorStop(0.55, '#aabbee'); fg.addColorStop(1, '#6677cc');
     ctx.fillStyle = fg;
-    ctx.beginPath(); ctx.arc(0, -4, 18, Math.PI, 0);
-    ctx.lineTo(18, 8);
-    for (let gx = 18; gx >= -18; gx -= 9) ctx.lineTo(gx - 4, gx % 18 === 0 ? 1 : 11);
+    ctx.beginPath(); ctx.arc(0, -4, 13, Math.PI, 0);
+    ctx.lineTo(13, 6);
+    for (let gx = 13; gx >= -13; gx -= 6) ctx.lineTo(gx - 3, gx % 13 === 0 ? 1 : 9);
     ctx.closePath(); ctx.fill();
-    ctx.globalAlpha = 1;
+    // 輪郭
+    ctx.strokeStyle = '#8899cc'; ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.arc(0, -4, 13, Math.PI, 0);
+    ctx.lineTo(13, 6);
+    for (let gx = 13; gx >= -13; gx -= 6) ctx.lineTo(gx - 3, gx % 13 === 0 ? 1 : 9);
+    ctx.closePath(); ctx.stroke();
     // 黒目（かわいい丸目）
-    ctx.fillStyle = '#445577';
-    ctx.beginPath(); ctx.ellipse(-5, -6, 3.5, 4, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(5, -6, 3.5, 4, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = 'rgba(100,150,255,0.9)';
-    ctx.beginPath(); ctx.arc(-5, -6, 2, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.arc(5, -6, 2, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#334466';
+    ctx.beginPath(); ctx.ellipse(-4, -5, 3, 3.5, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(4, -5, 3, 3.5, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(100,150,255,1)';
+    ctx.beginPath(); ctx.arc(-4, -5, 1.8, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(4, -5, 1.8, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = 'white';
-    ctx.beginPath(); ctx.arc(-6, -7, 0.9, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.arc(4, -7, 0.9, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(-5, -6, 0.7, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(3, -6, 0.7, 0, Math.PI * 2); ctx.fill();
     // にっこり口
-    ctx.strokeStyle = '#556688'; ctx.lineWidth = 1.2;
-    ctx.beginPath(); ctx.arc(0, -2, 4, 0.1, Math.PI - 0.1); ctx.stroke();
+    ctx.strokeStyle = '#445566'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(0, -1, 3, 0.15, Math.PI - 0.15); ctx.stroke();
   }
 
   // ===== ステップ敵（踏んで渡る足場） =====
